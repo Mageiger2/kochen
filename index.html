@@ -24,7 +24,7 @@
         }
     </style>
 </head>
-<body class="bg-orange-50 min-h-screen font-sans text-gray-800">
+<body class="bg-orange-50 min-h-screen font-sans text-gray-800 flex flex-col">
 
     <!-- LADE BEREICH (Wird beim Start angezeigt, bis die CSV geladen ist) -->
     <div id="loading-screen" class="min-h-screen flex flex-col items-center justify-center p-4 fade-in">
@@ -37,19 +37,36 @@
     </div>
 
     <!-- HAUPT-APP BEREICH (Initial versteckt) -->
-    <div id="main-app" class="hidden">
+    <div id="main-app" class="hidden flex-grow flex flex-col">
         
-        <!-- Header Bereich -->
+        <!-- Header Bereich mit Logos -->
         <header class="bg-emerald-500 text-white py-8 shadow-md rounded-b-3xl mb-8 relative">
-            <div class="max-w-4xl mx-auto px-4">
-                <div class="text-center mb-6">
-                    <h1 class="text-3xl md:text-4xl font-bold mb-2 flex justify-center items-center gap-3">
-                        <i data-lucide="chef-hat" class="w-10 h-10"></i>
-                        Schulküchen-Rezeptfinder
-                    </h1>
+            <div class="max-w-6xl mx-auto px-4">
+                
+                <!-- Top Row: Logos and Title -->
+                <div class="flex flex-col md:flex-row items-center justify-between mb-8 gap-6">
+                    <!-- Left Logo (MS Sued) -->
+                    <div class="w-full md:w-1/4 flex justify-center md:justify-start">
+                        <!-- HINWEIS: Bitte hier den exakten Dateinamen deines Logos anpassen, falls es z.B. .jpg statt .png ist -->
+                        <img src="logo_ms_sued.png" alt="MS Süd Logo" class="h-16 md:h-20 object-contain drop-shadow-md">
+                    </div>
+                    
+                    <!-- Center Title -->
+                    <div class="w-full md:w-1/2 text-center">
+                        <h1 class="text-3xl md:text-4xl font-bold flex justify-center items-center gap-3">
+                            <i data-lucide="chef-hat" class="w-10 h-10"></i>
+                            Schulküchen-Rezeptfinder
+                        </h1>
+                    </div>
+
+                    <!-- Right Logo (BdB) -->
+                    <div class="w-full md:w-1/4 flex justify-center md:justify-end">
+                        <!-- HINWEIS: Bitte hier den exakten Dateinamen anpassen -->
+                        <img src="logo_bdb.png" alt="BdB Logo" class="h-16 md:h-20 object-contain drop-shadow-md">
+                    </div>
                 </div>
 
-                <!-- NEU: Direkte Rezeptsuche -->
+                <!-- Direkte Rezeptsuche -->
                 <div class="max-w-2xl mx-auto relative">
                     <div class="bg-white/20 backdrop-blur-md rounded-xl p-2 flex items-center gap-2 border border-white/30 focus-within:bg-white focus-within:text-gray-800 transition-all duration-300 shadow-inner">
                         <i data-lucide="search" class="w-6 h-6 ml-2 text-current opacity-70"></i>
@@ -64,13 +81,13 @@
             </div>
         </header>
 
-        <main class="max-w-4xl mx-auto px-4 pb-12">
+        <main class="max-w-4xl mx-auto px-4 pb-12 flex-grow w-full">
             
             <!-- Eingabe-Bereich für Zutaten -->
             <section class="bg-white rounded-2xl shadow-sm p-6 mb-8 border border-orange-100 relative z-10">
                 <h2 class="text-xl font-bold mb-4 flex items-center gap-2 text-orange-600">
                     <i data-lucide="shopping-basket" class="w-6 h-6"></i>
-                    Was haben wir im Kühlschrank?
+                    Rezeptfinder - welche Zutaten hast du heute zur Verfügung?
                 </h2>
                 
                 <div class="flex flex-col sm:flex-row gap-3">
@@ -125,6 +142,36 @@
             </section>
 
         </main>
+
+        <!-- Footer mit Links -->
+        <footer class="bg-white border-t border-gray-200 mt-auto py-8">
+            <div class="max-w-4xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-6 text-gray-500 text-sm">
+                
+                <!-- E-Mail Button -->
+                <a href="mailto:martin.geiger@ms-dachau-sued.de" class="inline-flex items-center gap-2 bg-emerald-100 text-emerald-700 px-5 py-2.5 rounded-xl hover:bg-emerald-200 transition font-bold shadow-sm order-1 sm:order-2">
+                    <i data-lucide="mail" class="w-5 h-5"></i>
+                    E-Mail schreiben
+                </a>
+
+                <!-- Impressum / Datenschutz -->
+                <div class="flex gap-6 font-medium order-2 sm:order-1">
+                    <button onclick="openLegalModal('impressum')" class="hover:text-emerald-600 transition flex items-center gap-1.5">
+                        <i data-lucide="info" class="w-4 h-4"></i> Impressum
+                    </button>
+                    <button onclick="openLegalModal('datenschutz')" class="hover:text-emerald-600 transition flex items-center gap-1.5">
+                        <i data-lucide="shield-check" class="w-4 h-4"></i> Datenschutz
+                    </button>
+                </div>
+                
+            </div>
+            
+            <!-- Besucherzähler hits.sh -->
+            <div class="mt-8 flex justify-center opacity-70 hover:opacity-100 transition-opacity">
+                <a href="https://hits.sh/schulkueche-rezeptfinder/" target="_blank" rel="noopener noreferrer">
+                    <img alt="Besucherzähler" src="https://hits.sh/schulkueche-rezeptfinder.svg?style=flat-square&color=10b981"/>
+                </a>
+            </div>
+        </footer>
     </div>
 
     <!-- REZEPT-MODAL (Pop-up für Details) -->
@@ -182,6 +229,21 @@
         </div>
     </div>
 
+    <!-- LEGAL-MODAL (Pop-up für Impressum & Datenschutz) -->
+    <div id="legal-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col modal-enter relative">
+            <div class="bg-emerald-50 p-6 border-b border-emerald-100 flex justify-between items-center">
+                <h2 id="legal-modal-title" class="text-2xl font-bold text-gray-800">Titel</h2>
+                <button id="close-legal-btn" class="bg-white p-2 rounded-full shadow-sm hover:bg-gray-100 text-gray-500 transition">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div id="legal-modal-content" class="p-8 overflow-y-auto no-scrollbar flex-grow bg-white text-gray-700">
+                <!-- Wird per JS befüllt -->
+            </div>
+        </div>
+    </div>
+
     <script>
         // Icons initialisieren
         lucide.createIcons();
@@ -200,7 +262,6 @@
         // CSV AUTOMATISCH LADEN (Für GitHub Pages)
         // ---------------------------------------------------------
         document.addEventListener('DOMContentLoaded', () => {
-            // WICHTIG: Hier muss exakt der Dateiname deiner CSV stehen!
             const csvUrl = 'rezepte.csv';
             
             fetch(csvUrl)
@@ -211,7 +272,6 @@
                 .then(csvText => {
                     try {
                         processCSV(csvText);
-                        // UI umschalten, wenn erfolgreich
                         document.getElementById('loading-screen').classList.add('hidden');
                         document.getElementById('main-app').classList.remove('hidden');
                         document.getElementById('recipe-search-input').focus();
@@ -256,8 +316,6 @@
             const lines = csvText.split('\n');
             if (lines.length < 2) throw new Error("CSV ist leer oder fehlerhaft.");
 
-            // Automatische Erkennung, ob Excel ein Komma oder Semikolon benutzt hat
-            // Entfernt außerdem unsichtbare Excel-Sonderzeichen (BOM) am Anfang
             const firstLine = lines[0].replace(/^\uFEFF/, '');
             const delimiter = (firstLine.split(';').length > firstLine.split(',').length) ? ';' : ',';
             
@@ -269,14 +327,13 @@
             for (let i = 1; i < lines.length; i++) {
                 if (!lines[i].trim()) continue;
                 
-                // Nutze den neuen, robusten Splitter
                 const currentLine = parseCSVLine(lines[i].trim(), delimiter);
                 let rowData = {};
                 headers.forEach((header, index) => {
                     rowData[header] = currentLine[index] ? currentLine[index] : '';
                 });
 
-                if (!rowData['Rezept']) continue; // Leere Zeilen überspringen
+                if (!rowData['Rezept']) continue;
 
                 let recipeObj = {
                     title: rowData['Rezept'],
@@ -285,12 +342,12 @@
                     time: rowData['Zeit_min'] || '',
                     note: rowData['Hinweis'] || '',
                     portions: rowData['Portionen'] || '4',
-                    displayIngredients: [], // Komplette Liste für die Detail-Ansicht
-                    searchableIngredients: [], // Gefilterte Liste für die Such-Logik
+                    displayIngredients: [], 
+                    searchableIngredients: [],
                     steps: []
                 };
 
-                // Zutaten extrahieren (Spalten Zutat_01 bis Zutat_08)
+                // Zutaten extrahieren
                 for (let j = 1; j <= 8; j++) {
                     const num = String(j).padStart(2, '0');
                     const name = rowData[`Zutat_${num}`];
@@ -299,14 +356,12 @@
 
                     if (name && name.trim() !== '') {
                         const cleanName = name.trim();
-                        // Für die Anzeige im Rezept:
                         recipeObj.displayIngredients.push({
                             name: cleanName,
                             amount: amount || '',
                             unit: unit || ''
                         });
 
-                        // Für die Such-Logik (prüfen ob es eine Grundzutat ist)
                         const isBase = baseIngredientsNames.some(base => cleanName.toLowerCase().includes(base));
                         if (!isBase) {
                             recipeObj.searchableIngredients.push(cleanName);
@@ -315,7 +370,7 @@
                     }
                 }
 
-                // Schritte extrahieren (Spalten Schritt_01 bis Schritt_05)
+                // Schritte extrahieren
                 for (let j = 1; j <= 5; j++) {
                     const num = String(j).padStart(2, '0');
                     const step = rowData[`Schritt_${num}`];
@@ -328,11 +383,10 @@
             }
 
             allIngredients = Array.from(ingredientsSet).sort((a, b) => a.localeCompare(b, 'de'));
-            console.log(`Geladen: ${recipes.length} Rezepte, ${allIngredients.length} Such-Zutaten.`);
         }
 
         // ---------------------------------------------------------
-        // REZEPT-DIREKTSUCHE (Obere Leiste)
+        // REZEPT-DIREKTSUCHE
         // ---------------------------------------------------------
         const recipeSearchInput = document.getElementById('recipe-search-input');
         const recipeAutocompleteList = document.getElementById('recipe-autocomplete-list');
@@ -415,7 +469,6 @@
             }
         });
 
-        // Schließen der Dropdowns bei Klick außerhalb
         document.addEventListener('click', function(e) {
             if (e.target !== recipeSearchInput && e.target !== recipeAutocompleteList) {
                 recipeAutocompleteList.classList.add('hidden');
@@ -501,7 +554,6 @@
             let partialCount = 0;
 
             recipes.forEach(recipe => {
-                // Vergleiche nur mit den filterrelevanten Zutaten (ohne Öl, Salz etc.)
                 const missing = recipe.searchableIngredients.filter(ing => !selectedIngredients.includes(ing));
                 const hasOverlap = recipe.searchableIngredients.some(ing => selectedIngredients.includes(ing));
 
@@ -552,12 +604,10 @@
         const modal = document.getElementById('recipe-modal');
         const closeBtn = document.getElementById('close-modal-btn');
 
-        // Globale Variablen für die aktuelle Umrechnung
         let currentOpenRecipe = null;
         let basePortions = 4;
         let currentPortions = 4;
 
-        // Event-Listener für Plus/Minus Knöpfe
         document.getElementById('btn-portions-minus').addEventListener('click', () => {
             if (currentPortions > 1) {
                 currentPortions--;
@@ -586,28 +636,19 @@
                 const li = document.createElement('li');
                 li.className = "flex justify-between border-b border-orange-100/50 pb-1 last:border-0";
                 
-                // Mathematik für die Zutaten-Umrechnung
                 let finalAmountDisplay = '';
                 if (ing.amount && ing.amount.trim() !== '' && ing.amount !== '0') {
-                    // Komma durch Punkt ersetzen, damit der Browser damit rechnen kann
                     let parsedAmount = parseFloat(ing.amount.replace(',', '.'));
                     
                     if (!isNaN(parsedAmount)) {
-                        // Der eigentliche Dreisatz: (Menge / Basis-Personen) * Wunsch-Personen
                         let newAmount = (parsedAmount / basePortions) * currentPortions;
-                        
-                        // Auf maximal 2 Nachkommastellen runden (verhindert z.B. 0.333333)
                         newAmount = Math.round(newAmount * 100) / 100;
-                        
-                        // Wieder in deutsche Schreibweise (mit Komma) umwandeln
                         finalAmountDisplay = newAmount.toString().replace('.', ',');
                     } else {
-                        // Wenn es keine Zahl ist (z.B. "etwas"), einfach den Text übernehmen
                         finalAmountDisplay = ing.amount;
                     }
                 }
                 
-                // Setze Menge und Einheit hübsch zusammen
                 let displayParts = [];
                 if (finalAmountDisplay) displayParts.push(finalAmountDisplay);
                 if (ing.unit) displayParts.push(ing.unit);
@@ -643,10 +684,8 @@
                 noteEl.classList.add('hidden');
             }
 
-            // Zutaten zeichnen (mit neuer Rechen-Logik)
             renderModalIngredients();
 
-            // Schritte füllen
             const stepList = document.getElementById('modal-steps');
             stepList.innerHTML = '';
             if (recipe.steps.length > 0) {
@@ -665,7 +704,7 @@
 
             lucide.createIcons({ root: modal });
             modal.classList.remove('hidden');
-            document.body.style.overflow = 'hidden'; // Scrollen im Hintergrund verhindern
+            document.body.style.overflow = 'hidden';
         }
 
         function closeModal() {
@@ -675,7 +714,65 @@
 
         closeBtn.addEventListener('click', closeModal);
         modal.addEventListener('click', (e) => {
-            if (e.target === modal) closeModal(); // Schließen bei Klick daneben
+            if (e.target === modal) closeModal();
+        });
+
+
+        // ---------------------------------------------------------
+        // LEGAL MODAL LOGIK (Impressum & Datenschutz)
+        // ---------------------------------------------------------
+        const legalModal = document.getElementById('legal-modal');
+        const closeLegalBtn = document.getElementById('close-legal-btn');
+        const legalTitle = document.getElementById('legal-modal-title');
+        const legalContent = document.getElementById('legal-modal-content');
+
+        const legalData = {
+            impressum: {
+                title: 'Impressum',
+                content: `
+                    <h3 class="font-bold text-lg mb-2">Angaben gemäß § 5 TMG</h3>
+                    <p class="mb-4">Martin Geiger<br>Beratung digitale Bildung<br>Eduard-Ziegler-Str. 3<br>85221 Dachau</p>
+                    
+                    <h3 class="font-bold text-lg mb-2">Kontakt</h3>
+                    <p class="mb-4">Telefon: 08131/741799<br>E-Mail: martin.geiger@ms-dachau-sued.de</p>
+
+                    <h3 class="font-bold text-lg mb-2">Redaktionell verantwortlich</h3>
+                    <p class="mb-4">Martin Geiger<br>Eduard-Ziegler-Str. 3<br>85221 Dachau</p>
+                `
+            },
+            datenschutz: {
+                title: 'Datenschutzerklärung',
+                content: `
+                    <h3 class="font-bold text-lg mb-2">A) Datenschutz auf einen Blick</h3>
+                    <p class="mb-4"><strong>Allgemeine Hinweise</strong><br>Die folgenden Hinweise geben einen einfachen Überblick darüber, was mit Ihren personenbezogenen Daten passiert, wenn Sie diese Website besuchen.</p>
+                    
+                    <h3 class="font-bold text-lg mb-2">B) Hosting</h3>
+                    <p class="mb-4">Diese Website wird bei dem externen Dienstleister GitHub Inc. gehostet.</p>
+                    
+                    <h3 class="font-bold text-lg mb-2">C) Anonymer Besucherzähler</h3>
+                    <p class="mb-4">Ganz unten auf der Webseite befindet sich ein kleiner, rein visueller Seitenaufruf-Zähler des Open-Source Dienstes "hits.sh". Dieser zählt Aufrufe streng anonym und verzichtet komplett auf das Setzen von Cookies oder das Tracking von IP-Adressen.</p>
+                `
+            }
+        };
+
+        window.openLegalModal = function(type) {
+            const data = legalData[type];
+            if(data) {
+                legalTitle.textContent = data.title;
+                legalContent.innerHTML = data.content;
+                legalModal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            }
+        };
+
+        function closeLegalModalFunc() {
+            legalModal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        closeLegalBtn.addEventListener('click', closeLegalModalFunc);
+        legalModal.addEventListener('click', (e) => {
+            if (e.target === legalModal) closeLegalModalFunc();
         });
 
     </script>
