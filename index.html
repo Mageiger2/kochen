@@ -37,7 +37,6 @@
     </div>
 
     <!-- HAUPT-APP BEREICH -->
-    <!-- WICHTIG für Chrome: 'hidden' kombiniert mit 'flex' kann Probleme machen, wird per JS sicher gesteuert -->
     <div id="main-app" class="hidden flex-grow flex flex-col">
         
         <!-- Header Bereich -->
@@ -45,11 +44,10 @@
             <div class="max-w-6xl mx-auto px-4">
                 
                 <!-- Top Row: Logos and Title -->
-                <div class="flex flex-col md:flex-row items-center justify-between mb-8 gap-6">
-                    <div class="w-full md:w-1/4 hidden md:block"></div>
+                <div class="flex items-center justify-center mb-8 relative min-h-[5rem]">
                     
                     <!-- Center Title -->
-                    <div class="w-full md:w-1/2 text-center">
+                    <div class="text-center z-10">
                         <h1 class="text-3xl md:text-4xl font-bold flex justify-center items-center gap-3">
                             <i data-lucide="chef-hat" class="w-10 h-10 shrink-0"></i>
                             Schulküchen-Rezeptfinder
@@ -57,7 +55,7 @@
                     </div>
 
                     <!-- Right Logo (BdB) -->
-                    <div class="w-full md:w-1/4 flex justify-center md:justify-end shrink-0">
+                    <div class="hidden md:flex absolute right-0 justify-center shrink-0 z-0">
                         <img src="logo_bdb.png" alt="BdB Logo" class="h-16 md:h-20 object-contain drop-shadow-md">
                     </div>
                 </div>
@@ -87,7 +85,6 @@
                 </h2>
                 
                 <div class="flex flex-col sm:flex-row gap-3">
-                    <!-- min-w-0 behebt ein Chrome-Overflow Problem bei Input-Feldern -->
                     <div class="relative flex-grow min-w-0">
                         <input type="text" id="ingredient-input" autocomplete="off"
                             class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-emerald-400 focus:ring-0 outline-none transition text-lg min-w-0"
@@ -188,7 +185,6 @@
 
     <!-- REZEPT-MODAL (Pop-up für Details) -->
     <div id="recipe-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <!-- Der fix für Chrome: w-full max-h-[90vh] kombiniert mit overflow-hidden und Child min-h-0 -->
         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col modal-enter relative overflow-hidden">
             
             <!-- Modal Header -->
@@ -213,7 +209,6 @@
             </div>
 
             <!-- Modal Content (Scrollbar) -->
-            <!-- min-h-0 ist DER Schlüssel-Fix für das Chrome Scroll-Verhalten in Flex-Spalten! -->
             <div class="p-6 overflow-y-auto no-scrollbar flex-grow bg-white min-h-0">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                     
@@ -245,7 +240,6 @@
 
     <!-- LEGAL-MODAL (Pop-up für Impressum & Datenschutz) -->
     <div id="legal-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <!-- Auch hier: overflow-hidden und flex-col im Parent... -->
         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col modal-enter relative overflow-hidden">
             <div class="bg-emerald-50 p-6 border-b border-emerald-100 flex justify-between items-center shrink-0">
                 <h2 id="legal-modal-title" class="text-2xl font-bold text-gray-800">Titel</h2>
@@ -253,7 +247,6 @@
                     <i data-lucide="x" class="w-6 h-6 shrink-0"></i>
                 </button>
             </div>
-            <!-- ...und min-h-0 im Child für sauberes Scrollen in Chrome -->
             <div id="legal-modal-content" class="p-8 overflow-y-auto no-scrollbar flex-grow bg-white text-gray-700 min-h-0">
                 <!-- Wird per JS befüllt -->
             </div>
@@ -278,8 +271,8 @@
         // CSV AUTOMATISCH LADEN (Live von Google Sheets)
         // ---------------------------------------------------------
         document.addEventListener('DOMContentLoaded', () => {
-            // Live-Link zur veröffentlichten Google Sheets CSV
-            const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS47FKbfUVbg0YLTW2FZFIsHhCyKG6jOK4Ve1vz8yo3dglBLC_xWWzTz9eQCKQ2Mm1ePqnV0VPkSTXf/pub?output=csv';
+            // Live-Link zur veröffentlichten Google Sheets CSV (mit Anti-Cache Zusatz)
+            const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS47FKbfUVbg0YLTW2FZFIsHhCyKG6jOK4Ve1vz8yo3dglBLC_xWWzTz9eQCKQ2Mm1ePqnV0VPkSTXf/pub?output=csv&_t=' + new Date().getTime();
             
             fetch(csvUrl)
                 .then(response => {
@@ -295,65 +288,101 @@
                     } catch (err) {
                         console.error("Fehler beim Verarbeiten der CSV:", err);
                         const errorEl = document.getElementById('loading-error');
-                        errorEl.textContent = "Fehler beim Verarbeiten der CSV-Daten. Stimmt das Format?";
+                        errorEl.textContent = "Die Datenstruktur aus Google Sheets konnte nicht verarbeitet werden.";
                         errorEl.classList.remove('hidden');
                     }
                 })
                 .catch(error => {
                     console.error("Fehler beim Laden der CSV:", error);
-                    document.getElementById('loading-error').classList.remove('hidden');
-                    document.getElementById('loading-error').textContent = "Fehler: Die Rezepte konnten nicht von Google Sheets geladen werden. Bitte prüfe die Internetverbindung.";
+                    const errorEl = document.getElementById('loading-error');
+                    errorEl.textContent = "Fehler: Die Rezepte konnten nicht von Google Sheets geladen werden. Bitte prüfe die Internetverbindung.";
+                    errorEl.classList.remove('hidden');
                 });
         });
 
-        // Neue, robustere Funktion zum Splitten von CSV-Zeilen (erkennt Komma und Semikolon)
-        function parseCSVLine(line, delimiter) {
+        // ---------------------------------------------------------
+        // NEUER, ROBUSTER CSV PARSER (Behebt Google Sheets Umbrüche)
+        // ---------------------------------------------------------
+        function parseCSVFull(text) {
+            // Entfernt mögliche unsichtbare Sonderzeichen am Dateianfang (BOM)
+            text = text.replace(/^\uFEFF/, '');
+            
+            // Automatische Erkennung, ob Google Sheets Kommas oder Semikolons nutzt
+            const sample = text.substring(0, 1000);
+            const delimiter = (sample.split(';').length > sample.split(',').length) ? ';' : ',';
+            
             let result = [];
-            let inQuotes = false;
+            let row = [];
             let currentStr = '';
-            for (let i = 0; i < line.length; i++) {
-                let char = line[i];
-                if (char === '"' && line[i+1] === '"') {
-                    currentStr += '"'; // Escaped quotes
-                    i++;
-                } else if (char === '"') {
-                    inQuotes = !inQuotes;
-                } else if (char === delimiter && !inQuotes) {
-                    result.push(currentStr);
-                    currentStr = '';
+            let inQuotes = false;
+            
+            // Geht Zeichen für Zeichen durch, um Zeilenumbrüche INNERHALB von Zellen zu verstehen
+            for (let i = 0; i < text.length; i++) {
+                let char = text[i];
+                let nextChar = text[i + 1];
+                
+                if (inQuotes) {
+                    if (char === '"' && nextChar === '"') {
+                        currentStr += '"'; // Escaped quote "" -> "
+                        i++;
+                    } else if (char === '"') {
+                        inQuotes = false; // Ende des Zitates
+                    } else {
+                        currentStr += char;
+                    }
                 } else {
-                    currentStr += char;
+                    if (char === '"') {
+                        inQuotes = true;
+                    } else if (char === delimiter) {
+                        row.push(currentStr.trim());
+                        currentStr = '';
+                    } else if (char === '\n' || (char === '\r' && nextChar === '\n')) {
+                        row.push(currentStr.trim());
+                        result.push(row);
+                        row = [];
+                        currentStr = '';
+                        if (char === '\r') i++; // Skip the \n part of \r\n
+                    } else {
+                        currentStr += char;
+                    }
                 }
             }
-            result.push(currentStr);
-            return result.map(s => s.trim());
+            
+            // Letztes Wort/Letzte Zeile hinzufügen, falls die Datei ohne Enter endet
+            if (currentStr || row.length > 0) {
+                row.push(currentStr.trim());
+                result.push(row);
+            }
+            
+            return result;
         }
 
         function processCSV(csvText) {
-            const lines = csvText.split('\n');
-            if (lines.length < 2) throw new Error("CSV ist leer oder fehlerhaft.");
+            const rows = parseCSVFull(csvText);
+            if (rows.length < 2) throw new Error("CSV ist leer oder fehlerhaft.");
 
-            const firstLine = lines[0].replace(/^\uFEFF/, '');
-            const delimiter = (firstLine.split(';').length > firstLine.split(',').length) ? ';' : ',';
-            
-            const headers = parseCSVLine(firstLine, delimiter);
+            const headers = rows[0];
             
             let ingredientsSet = new Set();
             recipes = [];
 
-            for (let i = 1; i < lines.length; i++) {
-                if (!lines[i].trim()) continue;
+            // Zeile für Zeile verarbeiten (ab Zeile 2, da Zeile 1 die Header sind)
+            for (let i = 1; i < rows.length; i++) {
+                const currentLine = rows[i];
                 
-                const currentLine = parseCSVLine(lines[i].trim(), delimiter);
+                // Leere Zeilen überspringen
+                if (currentLine.length === 0 || (currentLine.length === 1 && !currentLine[0].trim())) continue;
+                
                 let rowData = {};
                 headers.forEach((header, index) => {
                     rowData[header] = currentLine[index] ? currentLine[index] : '';
                 });
 
-                if (!rowData['Rezept']) continue;
+                // Wenn kein Rezepttitel da ist, Zeile ignorieren
+                if (!rowData['Rezept'] || rowData['Rezept'].trim() === '') continue;
 
                 let recipeObj = {
-                    title: rowData['Rezept'],
+                    title: rowData['Rezept'].trim(),
                     category: rowData['Kategorie'] || '',
                     difficulty: rowData['Schwierigkeit'] || '',
                     time: rowData['Zeit_min'] || '',
@@ -375,8 +404,8 @@
                         const cleanName = name.trim();
                         recipeObj.displayIngredients.push({
                             name: cleanName,
-                            amount: amount || '',
-                            unit: unit || ''
+                            amount: amount ? amount.trim() : '',
+                            unit: unit ? unit.trim() : ''
                         });
 
                         const isBase = baseIngredientsNames.some(base => cleanName.toLowerCase().includes(base));
