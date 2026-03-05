@@ -271,10 +271,11 @@
         const baseIngredientsNames = ['öl', 'salz', 'pfeffer', 'wasser', 'oel', 'salz & pfeffer', 'meersalz', 'olivenöl', 'sonnenblumenöl', 'rapsöl'];
 
         // ---------------------------------------------------------
-        // CSV AUTOMATISCH LADEN (Für GitHub Pages)
+        // CSV AUTOMATISCH LADEN (Live von Google Sheets)
         // ---------------------------------------------------------
         document.addEventListener('DOMContentLoaded', () => {
-            const csvUrl = 'rezepte.csv';
+            // Live-Link zur veröffentlichten Google Sheets CSV
+            const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS47FKbfUVbg0YLTW2FZFIsHhCyKG6jOK4Ve1vz8yo3dglBLC_xWWzTz9eQCKQ2Mm1ePqnV0VPkSTXf/pub?output=csv';
             
             fetch(csvUrl)
                 .then(response => {
@@ -297,7 +298,7 @@
                 .catch(error => {
                     console.error("Fehler beim Laden der CSV:", error);
                     document.getElementById('loading-error').classList.remove('hidden');
-                    document.getElementById('loading-error').textContent = "Fehler: Die Datei konnte nicht geladen werden. Heißt die Datei exakt 'rezepte.csv' (alles klein) auf GitHub?";
+                    document.getElementById('loading-error').textContent = "Fehler: Die Rezepte konnten nicht von Google Sheets geladen werden. Bitte prüfe die Internetverbindung.";
                 });
         });
 
