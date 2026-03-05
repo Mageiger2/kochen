@@ -135,8 +135,13 @@
             <div class="bg-emerald-50 p-6 border-b border-emerald-100 flex justify-between items-start">
                 <div>
                     <h2 id="modal-title" class="text-2xl md:text-3xl font-bold text-gray-800 mb-2">Rezept Titel</h2>
-                    <div class="flex flex-wrap gap-4 text-sm font-medium text-emerald-700">
-                        <span id="modal-portions" class="flex items-center gap-1.5"><i data-lucide="users" class="w-4 h-4"></i> 4 Personen</span>
+                    <div class="flex flex-wrap gap-4 text-sm font-medium text-emerald-700 items-center">
+                        <div class="flex items-center gap-1 bg-emerald-100/70 px-2 py-1 rounded-lg">
+                            <i data-lucide="users" class="w-4 h-4 mr-1"></i>
+                            <button id="btn-portions-minus" class="w-6 h-6 flex items-center justify-center rounded-full hover:bg-emerald-200 text-emerald-800 transition font-bold leading-none select-none">-</button>
+                            <span id="modal-portions-text" class="w-[85px] text-center font-semibold">4 Personen</span>
+                            <button id="btn-portions-plus" class="w-6 h-6 flex items-center justify-center rounded-full hover:bg-emerald-200 text-emerald-800 transition font-bold leading-none select-none">+</button>
+                        </div>
                         <span id="modal-time" class="flex items-center gap-1.5"><i data-lucide="clock" class="w-4 h-4"></i> Zeit</span>
                         <span id="modal-difficulty" class="flex items-center gap-1.5"><i data-lucide="bar-chart" class="w-4 h-4"></i> Schwierigkeit</span>
                         <span id="modal-note" class="flex items-center gap-1.5 hidden"><i data-lucide="leaf" class="w-4 h-4"></i> Hinweis</span>
@@ -547,9 +552,82 @@
         const modal = document.getElementById('recipe-modal');
         const closeBtn = document.getElementById('close-modal-btn');
 
+        // Globale Variablen für die aktuelle Umrechnung
+        let currentOpenRecipe = null;
+        let basePortions = 4;
+        let currentPortions = 4;
+
+        // Event-Listener für Plus/Minus Knöpfe
+        document.getElementById('btn-portions-minus').addEventListener('click', () => {
+            if (currentPortions > 1) {
+                currentPortions--;
+                updatePortionsDisplay();
+                renderModalIngredients();
+            }
+        });
+
+        document.getElementById('btn-portions-plus').addEventListener('click', () => {
+            currentPortions++;
+            updatePortionsDisplay();
+            renderModalIngredients();
+        });
+
+        function updatePortionsDisplay() {
+            document.getElementById('modal-portions-text').textContent = `${currentPortions} Personen`;
+        }
+
+        function renderModalIngredients() {
+            const ingList = document.getElementById('modal-ingredients');
+            ingList.innerHTML = '';
+            
+            if (!currentOpenRecipe) return;
+
+            currentOpenRecipe.displayIngredients.forEach(ing => {
+                const li = document.createElement('li');
+                li.className = "flex justify-between border-b border-orange-100/50 pb-1 last:border-0";
+                
+                // Mathematik für die Zutaten-Umrechnung
+                let finalAmountDisplay = '';
+                if (ing.amount && ing.amount.trim() !== '' && ing.amount !== '0') {
+                    // Komma durch Punkt ersetzen, damit der Browser damit rechnen kann
+                    let parsedAmount = parseFloat(ing.amount.replace(',', '.'));
+                    
+                    if (!isNaN(parsedAmount)) {
+                        // Der eigentliche Dreisatz: (Menge / Basis-Personen) * Wunsch-Personen
+                        let newAmount = (parsedAmount / basePortions) * currentPortions;
+                        
+                        // Auf maximal 2 Nachkommastellen runden (verhindert z.B. 0.333333)
+                        newAmount = Math.round(newAmount * 100) / 100;
+                        
+                        // Wieder in deutsche Schreibweise (mit Komma) umwandeln
+                        finalAmountDisplay = newAmount.toString().replace('.', ',');
+                    } else {
+                        // Wenn es keine Zahl ist (z.B. "etwas"), einfach den Text übernehmen
+                        finalAmountDisplay = ing.amount;
+                    }
+                }
+                
+                // Setze Menge und Einheit hübsch zusammen
+                let displayParts = [];
+                if (finalAmountDisplay) displayParts.push(finalAmountDisplay);
+                if (ing.unit) displayParts.push(ing.unit);
+                let amountStr = displayParts.join(' ');
+                
+                li.innerHTML = `
+                    <span class="font-medium text-gray-800">${ing.name}</span>
+                    <span class="text-gray-500 text-right">${amountStr}</span>
+                `;
+                ingList.appendChild(li);
+            });
+        }
+
         function openRecipeModal(recipe) {
+            currentOpenRecipe = recipe;
+            basePortions = parseInt(recipe.portions) || 4;
+            currentPortions = basePortions;
+
             document.getElementById('modal-title').textContent = recipe.title;
-            document.getElementById('modal-portions').innerHTML = `<i data-lucide="users" class="w-4 h-4"></i> ${recipe.portions} Personen`;
+            updatePortionsDisplay();
             
             const timeStr = recipe.time ? `${recipe.time} Min.` : 'k.A.';
             document.getElementById('modal-time').innerHTML = `<i data-lucide="clock" class="w-4 h-4"></i> ${timeStr}`;
@@ -565,24 +643,8 @@
                 noteEl.classList.add('hidden');
             }
 
-            // Zutaten füllen (inklusive Öl/Salz, da displayIngredients genutzt wird)
-            const ingList = document.getElementById('modal-ingredients');
-            ingList.innerHTML = '';
-            recipe.displayIngredients.forEach(ing => {
-                const li = document.createElement('li');
-                li.className = "flex justify-between border-b border-orange-100/50 pb-1 last:border-0";
-                
-                // Menge und Einheit formatieren
-                let amountStr = '';
-                if (ing.amount && ing.amount !== '0') amountStr += ing.amount + ' ';
-                if (ing.unit) amountStr += ing.unit;
-                
-                li.innerHTML = `
-                    <span class="font-medium text-gray-800">${ing.name}</span>
-                    <span class="text-gray-500 text-right">${amountStr}</span>
-                `;
-                ingList.appendChild(li);
-            });
+            // Zutaten zeichnen (mit neuer Rechen-Logik)
+            renderModalIngredients();
 
             // Schritte füllen
             const stepList = document.getElementById('modal-steps');
