@@ -45,11 +45,8 @@
                 
                 <!-- Top Row: Logos and Title -->
                 <div class="flex flex-col md:flex-row items-center justify-between mb-8 gap-6">
-                    <!-- Left Logo (MS Sued) -->
-                    <div class="w-full md:w-1/4 flex justify-center md:justify-start">
-                        <!-- HINWEIS: Bitte hier den exakten Dateinamen deines Logos anpassen, falls es z.B. .jpg statt .png ist -->
-                        <img src="logo_ms_sued.png" alt="MS Süd Logo" class="h-16 md:h-20 object-contain drop-shadow-md">
-                    </div>
+                    <!-- Platzhalter links, damit der Titel perfekt in der Mitte bleibt -->
+                    <div class="w-full md:w-1/4 hidden md:block"></div>
                     
                     <!-- Center Title -->
                     <div class="w-full md:w-1/2 text-center">
@@ -144,32 +141,47 @@
         </main>
 
         <!-- Footer mit Links -->
-        <footer class="bg-white border-t border-gray-200 mt-auto py-8">
-            <div class="max-w-4xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-6 text-gray-500 text-sm">
+        <footer class="bg-white border-t border-gray-200 mt-auto py-10">
+            <div class="max-w-4xl mx-auto px-4">
                 
-                <!-- E-Mail Button -->
-                <a href="mailto:martin.geiger@ms-dachau-sued.de" class="inline-flex items-center gap-2 bg-emerald-100 text-emerald-700 px-5 py-2.5 rounded-xl hover:bg-emerald-200 transition font-bold shadow-sm order-1 sm:order-2">
-                    <i data-lucide="mail" class="w-5 h-5"></i>
-                    E-Mail schreiben
-                </a>
+                <!-- Kontakt & Infos (Zentriert) -->
+                <div class="flex flex-col items-center mb-10">
+                    <h3 class="text-gray-700 font-bold mb-4 text-lg">Kontakt & Infos</h3>
+                    
+                    <a href="mailto:martin.geiger@ms-dachau-sued.de" class="inline-flex items-center gap-2 bg-emerald-100 text-emerald-700 px-6 py-3 rounded-xl hover:bg-emerald-200 transition font-bold shadow-sm mb-3">
+                        <i data-lucide="mail" class="w-5 h-5"></i>
+                        E-Mail schreiben
+                    </a>
+                    
+                    <p class="text-xs text-gray-400 text-center max-w-md mb-6">Hinweis: Für die Richtigkeit der Rezepte und Berechnungen kann keine Garantie übernommen werden.</p>
+                    
+                    <!-- Besucherzähler hits.sh -->
+                    <div class="opacity-70 hover:opacity-100 transition-opacity">
+                        <a href="https://hits.sh/schulkueche-rezeptfinder/" target="_blank" rel="noopener noreferrer">
+                            <img alt="Besucherzähler" src="https://hits.sh/schulkueche-rezeptfinder.svg?style=flat-square&color=10b981"/>
+                        </a>
+                    </div>
+                </div>
 
-                <!-- Impressum / Datenschutz -->
-                <div class="flex gap-6 font-medium order-2 sm:order-1">
-                    <button onclick="openLegalModal('impressum')" class="hover:text-emerald-600 transition flex items-center gap-1.5">
-                        <i data-lucide="info" class="w-4 h-4"></i> Impressum
-                    </button>
-                    <button onclick="openLegalModal('datenschutz')" class="hover:text-emerald-600 transition flex items-center gap-1.5">
-                        <i data-lucide="shield-check" class="w-4 h-4"></i> Datenschutz
-                    </button>
+                <!-- Unterste Zeile: Copyright links, Rechtliches rechts -->
+                <div class="flex flex-col sm:flex-row justify-between items-center gap-4 text-gray-500 text-sm border-t border-gray-100 pt-6">
+                    
+                    <!-- Copyright -->
+                    <div class="order-2 sm:order-1 font-medium">
+                        &copy; 2026 - Martin Geiger
+                    </div>
+
+                    <!-- Impressum / Datenschutz -->
+                    <div class="flex gap-6 font-medium order-1 sm:order-2">
+                        <button onclick="openLegalModal('impressum')" class="hover:text-emerald-600 transition flex items-center gap-1.5">
+                            <i data-lucide="info" class="w-4 h-4"></i> Impressum
+                        </button>
+                        <button onclick="openLegalModal('datenschutz')" class="hover:text-emerald-600 transition flex items-center gap-1.5">
+                            <i data-lucide="shield-check" class="w-4 h-4"></i> Datenschutz
+                        </button>
+                    </div>
                 </div>
                 
-            </div>
-            
-            <!-- Besucherzähler hits.sh -->
-            <div class="mt-8 flex justify-center opacity-70 hover:opacity-100 transition-opacity">
-                <a href="https://hits.sh/schulkueche-rezeptfinder/" target="_blank" rel="noopener noreferrer">
-                    <img alt="Besucherzähler" src="https://hits.sh/schulkueche-rezeptfinder.svg?style=flat-square&color=10b981"/>
-                </a>
             </div>
         </footer>
     </div>
@@ -746,8 +758,8 @@
                     <h3 class="font-bold text-lg mb-2">A) Datenschutz auf einen Blick</h3>
                     <p class="mb-4"><strong>Allgemeine Hinweise</strong><br>Die folgenden Hinweise geben einen einfachen Überblick darüber, was mit Ihren personenbezogenen Daten passiert, wenn Sie diese Website besuchen.</p>
                     
-                    <h3 class="font-bold text-lg mb-2">B) Hosting</h3>
-                    <p class="mb-4">Diese Website wird bei dem externen Dienstleister GitHub Inc. gehostet.</p>
+                    <h3 class="font-bold text-lg mb-2">B) Hosting & Externe Ressourcen</h3>
+                    <p class="mb-4">Diese Website wird bei dem externen Dienstleister GitHub Inc. gehostet. Zur korrekten optischen Darstellung lädt die Seite zudem externe Design-Ressourcen (Tailwind CSS und unpkg für Icons). Bei der Verbindung zu diesen Servern wird technisch bedingt Ihre IP-Adresse übertragen.</p>
                     
                     <h3 class="font-bold text-lg mb-2">C) Anonymer Besucherzähler</h3>
                     <p class="mb-4">Ganz unten auf der Webseite befindet sich ein kleiner, rein visueller Seitenaufruf-Zähler des Open-Source Dienstes "hits.sh". Dieser zählt Aufrufe streng anonym und verzichtet komplett auf das Setzen von Cookies oder das Tracking von IP-Adressen.</p>
