@@ -205,6 +205,8 @@
                         </div>
                         <span id="modal-time" class="flex items-center gap-1.5"><i data-lucide="clock" class="w-4 h-4 shrink-0"></i> Zeit</span>
                         <span id="modal-difficulty" class="flex items-center gap-1.5"><i data-lucide="bar-chart" class="w-4 h-4 shrink-0"></i> Schwierigkeit</span>
+                        <span id="modal-category" class="flex items-center gap-1.5 hidden"><i data-lucide="tag" class="w-4 h-4 shrink-0"></i> Kategorie</span>
+                        <span id="modal-technique" class="flex items-center gap-1.5 hidden"><i data-lucide="flame" class="w-4 h-4 shrink-0"></i> Technik</span>
                         <span id="modal-note" class="flex items-center gap-1.5 hidden"><i data-lucide="leaf" class="w-4 h-4 shrink-0"></i> Hinweis</span>
                     </div>
                 </div>
@@ -391,6 +393,7 @@
                     category: rowData['Kategorie'] || '',
                     difficulty: rowData['Schwierigkeit'] || '',
                     time: rowData['Zeit_min'] || '',
+                    technique: rowData['Haupttechnik'] || '',
                     note: rowData['Hinweis'] || '',
                     portions: rowData['Portionen'] || '4',
                     displayIngredients: [], 
@@ -624,22 +627,32 @@
 
         function createRecipeCard(recipe, missingIngredients) {
             const card = document.createElement('div');
-            card.className = "bg-white p-5 rounded-2xl shadow-sm border border-gray-200 hover:border-emerald-300 hover:shadow-md transition fade-in cursor-pointer group";
+            card.className = "bg-white p-5 rounded-2xl shadow-sm border border-gray-200 hover:border-emerald-300 hover:shadow-md transition fade-in cursor-pointer group flex flex-col h-full";
             
             let html = `
-                <div class="flex items-start justify-between mb-3 border-b border-gray-100 pb-3">
+                <div class="flex items-start justify-between mb-2">
                     <h3 class="text-lg font-bold text-gray-800 leading-tight group-hover:text-emerald-600 transition">${recipe.title}</h3>
                     <div class="bg-gray-50 p-1.5 rounded-lg text-gray-400 group-hover:bg-emerald-50 group-hover:text-emerald-500 transition shrink-0 ml-2">
                         <i data-lucide="chevron-right" class="w-5 h-5 shrink-0"></i>
                     </div>
                 </div>
+                
+                <div class="flex flex-wrap gap-2 mb-4 border-b border-gray-100 pb-3">
+                    ${recipe.time ? `<span class="inline-flex items-center gap-1 text-xs font-medium bg-gray-100 text-gray-600 px-2 py-1 rounded-md"><i data-lucide="clock" class="w-3 h-3 shrink-0"></i> ${recipe.time} Min.</span>` : ''}
+                    ${recipe.difficulty ? `<span class="inline-flex items-center gap-1 text-xs font-medium bg-blue-50 text-blue-600 px-2 py-1 rounded-md"><i data-lucide="bar-chart" class="w-3 h-3 shrink-0"></i> ${recipe.difficulty}</span>` : ''}
+                    ${recipe.category ? `<span class="inline-flex items-center gap-1 text-xs font-medium bg-purple-50 text-purple-600 px-2 py-1 rounded-md"><i data-lucide="tag" class="w-3 h-3 shrink-0"></i> ${recipe.category}</span>` : ''}
+                    ${recipe.technique ? `<span class="inline-flex items-center gap-1 text-xs font-medium bg-amber-50 text-amber-600 px-2 py-1 rounded-md"><i data-lucide="flame" class="w-3 h-3 shrink-0"></i> ${recipe.technique}</span>` : ''}
+                    ${recipe.note ? `<span class="inline-flex items-center gap-1 text-xs font-medium bg-emerald-50 text-emerald-700 px-2 py-1 rounded-md"><i data-lucide="leaf" class="w-3 h-3 shrink-0"></i> ${recipe.note}</span>` : ''}
+                </div>
             `;
 
             if (missingIngredients.length === 0) {
-                html += `<p class="text-emerald-600 font-semibold text-sm flex items-center gap-1.5"><i data-lucide="check-circle-2" class="w-4 h-4 shrink-0"></i> Alles da! Los geht's.</p>`;
+                html += `<div class="mt-auto"><p class="text-emerald-600 font-semibold text-sm flex items-center gap-1.5"><i data-lucide="check-circle-2" class="w-4 h-4 shrink-0"></i> Alles da! Los geht's.</p></div>`;
             } else {
-                html += `<p class="text-orange-500 font-semibold text-sm mb-2 flex items-center gap-1.5"><i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i> Dir fehlt noch:</p>`;
-                html += `<p class="text-sm text-gray-600 pl-5">${missingIngredients.join(', ')}</p>`;
+                html += `<div class="mt-auto">
+                            <p class="text-orange-500 font-semibold text-sm mb-2 flex items-center gap-1.5"><i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i> Dir fehlt noch:</p>
+                            <p class="text-sm text-gray-600 pl-5">${missingIngredients.join(', ')}</p>
+                         </div>`;
             }
 
             card.innerHTML = html;
@@ -726,6 +739,22 @@
             
             const diffStr = recipe.difficulty ? recipe.difficulty : 'k.A.';
             document.getElementById('modal-difficulty').innerHTML = `<i data-lucide="bar-chart" class="w-4 h-4 shrink-0"></i> ${diffStr}`;
+
+            const catEl = document.getElementById('modal-category');
+            if (recipe.category && recipe.category.trim() !== '') {
+                catEl.innerHTML = `<i data-lucide="tag" class="w-4 h-4 shrink-0"></i> ${recipe.category}`;
+                catEl.classList.remove('hidden');
+            } else {
+                catEl.classList.add('hidden');
+            }
+
+            const techEl = document.getElementById('modal-technique');
+            if (recipe.technique && recipe.technique.trim() !== '') {
+                techEl.innerHTML = `<i data-lucide="flame" class="w-4 h-4 shrink-0"></i> ${recipe.technique}`;
+                techEl.classList.remove('hidden');
+            } else {
+                techEl.classList.add('hidden');
+            }
 
             const noteEl = document.getElementById('modal-note');
             if (recipe.note && recipe.note.trim() !== '') {
