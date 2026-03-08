@@ -1,5 +1,21 @@
 <!DOCTYPE html>
 <html lang="de">
+<!--
+======================================================================
+VERSIONSVERLAUF (Version History)
+======================================================================
+v1.0 - Startversion: Einfaches HTML mit lokal eingebauten Test-Rezepten.
+v1.1 - Lokale CSV: Upload-Button für eine lokale Schulküchen-CSV.
+v1.2 - GitHub Host: Automatisiertes Laden der CSV direkt von GitHub.
+v1.3 - Portionen-Rechner: Dreisatz-Logik (Plus/Minus Buttons) im Pop-up.
+v1.4 - Footer & Rechtliches: Impressum, Datenschutz & hits.sh Zähler.
+v1.5 - Google Sheets Live: Automatischer Abruf der Live-Google-Tabelle.
+v1.6 - Cross-Browser Fix: Flexbox & Layout Bugs für Chrome/Edge behoben.
+v1.7 - Badges/Etiketten: Kategorie, Schwierigkeit etc. bunt auf den Karten.
+v2.0 - [AKTUELL] PWA Offline Modus: Service Worker & Manifest integriert. 
+       App ist nun offline-fähig & als App auf Homescreen installierbar!
+======================================================================
+-->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,7 +32,6 @@
         }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        /* Modal Animation */
         .modal-enter { animation: modalFadeIn 0.3s ease-out forwards; }
         @keyframes modalFadeIn {
             from { opacity: 0; transform: scale(0.95); }
@@ -24,7 +39,12 @@
         }
     </style>
 </head>
-<body class="bg-orange-50 min-h-screen font-sans text-gray-800 flex flex-col">
+<body class="bg-orange-50 min-h-screen font-sans text-gray-800 flex flex-col relative">
+
+    <!-- OFFLINE INDIKATOR (Erscheint nur, wenn kein Internet da ist) -->
+    <div id="offline-badge" class="hidden absolute top-4 left-1/2 transform -translate-x-1/2 bg-orange-500 text-white text-xs md:text-sm font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2 z-50">
+        <i data-lucide="wifi-off" class="w-4 h-4"></i> Offline-Modus (Gespeicherter Stand)
+    </div>
 
     <!-- LADE BEREICH -->
     <div id="loading-screen" class="min-h-screen flex flex-col items-center justify-center p-4 fade-in">
@@ -265,20 +285,33 @@
         lucide.createIcons();
 
         // ---------------------------------------------------------
+        // OFFLINE ANZEIGE STEUERUNG
+        // ---------------------------------------------------------
+        function updateOnlineStatus() {
+            const badge = document.getElementById('offline-badge');
+            if (navigator.onLine) {
+                badge.classList.add('hidden');
+            } else {
+                badge.classList.remove('hidden');
+            }
+        }
+        window.addEventListener('online', updateOnlineStatus);
+        window.addEventListener('offline', updateOnlineStatus);
+        updateOnlineStatus(); // Initiale Prüfung beim Start
+
+        // ---------------------------------------------------------
         // DATENBANK & GLOBALE VARIABLEN
         // ---------------------------------------------------------
         let recipes = [];
-        let allIngredients = []; // Für das Dropdown (ohne Grundzutaten)
+        let allIngredients = [];
         let selectedIngredients = [];
 
-        // Grundzutaten, die beim Suchen ignoriert werden (müssen nicht eingetippt werden)
         const baseIngredientsNames = ['öl', 'salz', 'pfeffer', 'wasser', 'oel', 'salz & pfeffer', 'meersalz', 'olivenöl', 'sonnenblumenöl', 'rapsöl'];
 
         // ---------------------------------------------------------
         // CSV AUTOMATISCH LADEN (Live von Google Sheets)
         // ---------------------------------------------------------
         document.addEventListener('DOMContentLoaded', () => {
-            // Live-Link zur veröffentlichten Google Sheets CSV (mit Anti-Cache Zusatz)
             const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS47FKbfUVbg0YLTW2FZFIsHhCyKG6jOK4Ve1vz8yo3dglBLC_xWWzTz9eQCKQ2Mm1ePqnV0VPkSTXf/pub?output=csv&_t=' + new Date().getTime();
             
             fetch(csvUrl)
@@ -300,21 +333,20 @@
                     }
                 })
                 .catch(error => {
+                    // Wird nun durch den Service Worker abgefangen, WENN bereits ein Cache existiert.
+                    // Diese Fehlermeldung kommt nur, wenn jemand GANZ NEU auf die Seite geht UND offline ist.
                     console.error("Fehler beim Laden der CSV:", error);
                     const errorEl = document.getElementById('loading-error');
-                    errorEl.textContent = "Fehler: Die Rezepte konnten nicht von Google Sheets geladen werden. Bitte prüfe die Internetverbindung.";
+                    errorEl.textContent = "Fehler: Du hast keine Internetverbindung und die Rezepte wurden noch nie auf diesem Gerät geladen.";
                     errorEl.classList.remove('hidden');
                 });
         });
 
         // ---------------------------------------------------------
-        // NEUER, ROBUSTER CSV PARSER (Behebt Google Sheets Umbrüche)
+        // NEUER, ROBUSTER CSV PARSER
         // ---------------------------------------------------------
         function parseCSVFull(text) {
-            // Entfernt mögliche unsichtbare Sonderzeichen am Dateianfang (BOM)
             text = text.replace(/^\uFEFF/, '');
-            
-            // Automatische Erkennung, ob Google Sheets Kommas oder Semikolons nutzt
             const sample = text.substring(0, 1000);
             const delimiter = (sample.split(';').length > sample.split(',').length) ? ';' : ',';
             
@@ -323,17 +355,16 @@
             let currentStr = '';
             let inQuotes = false;
             
-            // Geht Zeichen für Zeichen durch, um Zeilenumbrüche INNERHALB von Zellen zu verstehen
             for (let i = 0; i < text.length; i++) {
                 let char = text[i];
                 let nextChar = text[i + 1];
                 
                 if (inQuotes) {
                     if (char === '"' && nextChar === '"') {
-                        currentStr += '"'; // Escaped quote "" -> "
+                        currentStr += '"';
                         i++;
                     } else if (char === '"') {
-                        inQuotes = false; // Ende des Zitates
+                        inQuotes = false;
                     } else {
                         currentStr += char;
                     }
@@ -348,19 +379,16 @@
                         result.push(row);
                         row = [];
                         currentStr = '';
-                        if (char === '\r') i++; // Skip the \n part of \r\n
+                        if (char === '\r') i++;
                     } else {
                         currentStr += char;
                     }
                 }
             }
-            
-            // Letztes Wort/Letzte Zeile hinzufügen, falls die Datei ohne Enter endet
             if (currentStr || row.length > 0) {
                 row.push(currentStr.trim());
                 result.push(row);
             }
-            
             return result;
         }
 
@@ -369,15 +397,11 @@
             if (rows.length < 2) throw new Error("CSV ist leer oder fehlerhaft.");
 
             const headers = rows[0];
-            
             let ingredientsSet = new Set();
             recipes = [];
 
-            // Zeile für Zeile verarbeiten (ab Zeile 2, da Zeile 1 die Header sind)
             for (let i = 1; i < rows.length; i++) {
                 const currentLine = rows[i];
-                
-                // Leere Zeilen überspringen
                 if (currentLine.length === 0 || (currentLine.length === 1 && !currentLine[0].trim())) continue;
                 
                 let rowData = {};
@@ -385,7 +409,6 @@
                     rowData[header] = currentLine[index] ? currentLine[index] : '';
                 });
 
-                // Wenn kein Rezepttitel da ist, Zeile ignorieren
                 if (!rowData['Rezept'] || rowData['Rezept'].trim() === '') continue;
 
                 let recipeObj = {
@@ -401,7 +424,6 @@
                     steps: []
                 };
 
-                // Zutaten extrahieren
                 for (let j = 1; j <= 8; j++) {
                     const num = String(j).padStart(2, '0');
                     const name = rowData[`Zutat_${num}`];
@@ -424,7 +446,6 @@
                     }
                 }
 
-                // Schritte extrahieren
                 for (let j = 1; j <= 5; j++) {
                     const num = String(j).padStart(2, '0');
                     const step = rowData[`Schritt_${num}`];
@@ -432,10 +453,8 @@
                         recipeObj.steps.push(step.trim());
                     }
                 }
-
                 recipes.push(recipeObj);
             }
-
             allIngredients = Array.from(ingredientsSet).sort((a, b) => a.localeCompare(b, 'de'));
         }
 
@@ -855,6 +874,94 @@
             if (e.target === legalModal) closeLegalModalFunc();
         });
 
+
+        // ---------------------------------------------------------
+        // PWA SETUP (MANIFEST & SERVICE WORKER)
+        // Macht die App offline-fähig und installierbar
+        // ---------------------------------------------------------
+
+        // 1. Dynamisches PWA Manifest erstellen (Voraussetzung für App-Installation)
+        const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"></path><line x1="6" y1="17" x2="18" y2="17"></line></svg>`;
+        const encodedIcon = "data:image/svg+xml;base64," + btoa(svgIcon);
+
+        const manifest = {
+            name: "Schulküchen-Rezeptfinder",
+            short_name: "Rezepte",
+            start_url: location.href.split('?')[0],
+            display: "standalone",
+            background_color: "#fff7ed",
+            theme_color: "#10b981",
+            icons: [{
+                src: encodedIcon,
+                sizes: "512x512",
+                type: "image/svg+xml",
+                purpose: "any maskable"
+            }]
+        };
+        const manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
+        const manifestUrl = URL.createObjectURL(manifestBlob);
+        const link = document.createElement('link');
+        link.rel = 'manifest';
+        link.href = manifestUrl;
+        document.head.appendChild(link);
+
+        // 2. Dynamischen Service Worker erstellen (Das Offline-Gedächtnis)
+        const swCode = `
+            const CACHE_NAME = 'rezeptfinder-v2';
+
+            self.addEventListener('install', event => {
+                self.skipWaiting();
+            });
+
+            self.addEventListener('activate', event => {
+                event.waitUntil(clients.claim());
+            });
+
+            self.addEventListener('fetch', event => {
+                if (event.request.method !== 'GET') return;
+
+                // Zähler und reine Analyse-Scripts nicht cachen
+                if (event.request.url.includes('hits.sh')) return;
+
+                event.respondWith(
+                    fetch(event.request).then(response => {
+                        // Erfolgreiche Antworten clonen und in den Cache legen
+                        if (response && response.status === 200 && (response.type === 'basic' || response.type === 'cors')) {
+                            const responseToCache = response.clone();
+                            caches.open(CACHE_NAME).then(cache => {
+                                // Bei Google Sheets die Time-Stamps ignorieren, um den reinen Link zu cachen
+                                let cacheKey = event.request;
+                                if(event.request.url.includes('docs.google.com')) {
+                                    cacheKey = new Request(event.request.url.split('&_t=')[0]);
+                                }
+                                cache.put(cacheKey, responseToCache);
+                            });
+                        }
+                        return response;
+                    }).catch(() => {
+                        // OFFLINE-FALLBACK: Wenn Fetch fehlschlägt, suche im Cache
+                        let cacheKey = event.request;
+                        if(event.request.url.includes('docs.google.com')) {
+                            cacheKey = new Request(event.request.url.split('&_t=')[0]);
+                        }
+                        return caches.match(cacheKey);
+                    })
+                );
+            });
+        `;
+        
+        // Service Worker registrieren
+        const swBlob = new Blob([swCode], { type: 'application/javascript' });
+        const swUrl = URL.createObjectURL(swBlob);
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register(swUrl).then(() => {
+                    console.log('PWA Service Worker bereit (Offline-Modus aktiv).');
+                }).catch((err) => {
+                    console.error('Service Worker Fehler:', err);
+                });
+            });
+        }
     </script>
 </body>
 </html>
