@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rezeptfinder-v3';
+const CACHE_NAME = 'rezeptfinder-v4';
 
 // Hier tragen wir alle Dateien ein, die für den Offline-Start zwingend auf dem Gerät liegen müssen
 const ASSETS_TO_CACHE = [
