@@ -4,12 +4,13 @@
 ======================================================================
 VERSIONSVERLAUF (Version History)
 ======================================================================
-v1.0 bis v2.3 - Aufbau, Live-Daten, Layout Fixes, Offline-Storage, Logos
-v3.0 - Design & Architektur Update (Pastell-Farben)
-v3.1 - [AKTUELL] Chrome/Edge Fixes & Image Resize:
-       - Flex-Container auf natürliche Scroll-Höhen umgestellt (Chrome Bugfix)
-       - Manifest.json um 192x192 Icon erweitert (Edge App-Install Bugfix)
-       - Bilder im Offline-Pop-up in einheitlicher, kleinerer Größe fixiert
+v1.0 bis v3.0 - Aufbau, Live-Daten, Offline-Storage, Pastell-Design
+v3.1 - Chrome/Edge Fixes (natürliche Scroll-Höhen)
+v3.2 - [AKTUELL] PWA Manifest Update:
+       - Dynamisches Blob-Manifest komplett entfernt.
+       - Echten <link rel="manifest"> im Head hinzugefügt.
+       - Erfordert nun externe manifest.json & PNG-Icons (192x192 & 512x512)
+         im GitHub Repo für die fehlerfreie Chrome/Edge App-Installation.
 ======================================================================
 -->
 <head>
@@ -17,6 +18,10 @@ v3.1 - [AKTUELL] Chrome/Edge Fixes & Image Resize:
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rezepte finden</title>
+    
+    <!-- PWA Manifest & Theme Color (Zwingend für App-Installation) -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#a8e6cf">
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -984,40 +989,8 @@ v3.1 - [AKTUELL] Chrome/Edge Fixes & Image Resize:
         });
 
         // ---------------------------------------------------------
-        // PWA REGISTRIERUNG & MANIFEST (Inkl. Edge-Fix für 192x192 Icon)
+        // PWA REGISTRIERUNG (Service Worker)
         // ---------------------------------------------------------
-        const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 24 24" fill="none" stroke="#2b7a5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"></path><line x1="6" y1="17" x2="18" y2="17"></line></svg>`;
-        const encodedIcon = "data:image/svg+xml;base64," + btoa(svgIcon);
-
-        const manifest = {
-            name: "Schulküchen-Rezeptfinder",
-            short_name: "Rezepte",
-            start_url: "./",
-            display: "standalone",
-            background_color: "#fff0e5",
-            theme_color: "#a8e6cf",
-            icons: [
-                {
-                    src: encodedIcon,
-                    sizes: "192x192",
-                    type: "image/svg+xml",
-                    purpose: "any maskable"
-                },
-                {
-                    src: encodedIcon,
-                    sizes: "512x512",
-                    type: "image/svg+xml",
-                    purpose: "any maskable"
-                }
-            ]
-        };
-        const manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
-        const manifestUrl = URL.createObjectURL(manifestBlob);
-        const link = document.createElement('link');
-        link.rel = 'manifest';
-        link.href = manifestUrl;
-        document.head.appendChild(link);
-
         // Saubere Registrierung der externen 'sw.js' Datei für den Offline-Modus
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
