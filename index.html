@@ -4,14 +4,12 @@
 ======================================================================
 VERSIONSVERLAUF (Version History)
 ======================================================================
-v1.0 bis v2.2 - Aufbau, Live-Daten, Layout Fixes & Offline-Storage
-v2.3 - Finaler Feinschliff (Logos, Offline-Anleitung mit Bildern)
-v3.0 - [AKTUELL] Design & Architektur Update:
-       - Komplettes Re-Design auf Pastell-Grün & Pastell-Pfirsich 
-         (Custom Tailwind Config integriert).
-       - Blob-Service-Worker restlos entfernt.
-       - Saubere Registrierung der externen 'sw.js' Datei eingebaut 
-         (Behebt alle Windows/Edge Installations-Bugs endgültig).
+v1.0 bis v2.3 - Aufbau, Live-Daten, Layout Fixes, Offline-Storage, Logos
+v3.0 - Design & Architektur Update (Pastell-Farben)
+v3.1 - [AKTUELL] Chrome/Edge Fixes & Image Resize:
+       - Flex-Container auf natürliche Scroll-Höhen umgestellt (Chrome Bugfix)
+       - Manifest.json um 192x192 Icon erweitert (Edge App-Install Bugfix)
+       - Bilder im Offline-Pop-up in einheitlicher, kleinerer Größe fixiert
 ======================================================================
 -->
 <head>
@@ -30,14 +28,14 @@ v3.0 - [AKTUELL] Design & Architektur Update:
                 extend: {
                     colors: {
                         'pgreen': {
-                            light: '#e8f8f2',   // Sehr helles Pastell-Grün (für Hintergründe)
-                            DEFAULT: '#a8e6cf', // Pastell-Grün (Hauptfarbe)
-                            dark: '#2b7a5c',    // Dunkelgrün (für lesbaren Text auf hellem Grund)
+                            light: '#e8f8f2',
+                            DEFAULT: '#a8e6cf',
+                            dark: '#2b7a5c',
                         },
                         'ppeach': {
-                            light: '#fff0e5',   // Sehr heller Pfirsich (für Hintergründe)
-                            DEFAULT: '#ffd3b6', // Pastell-Pfirsich (Hauptfarbe)
-                            dark: '#b55e2b',    // Dunkler Pfirsich/Rostrot (für lesbaren Text)
+                            light: '#fff0e5',
+                            DEFAULT: '#ffd3b6',
+                            dark: '#b55e2b',
                         }
                     }
                 }
@@ -62,7 +60,7 @@ v3.0 - [AKTUELL] Design & Architektur Update:
         }
     </style>
 </head>
-<body class="bg-ppeach-light min-h-[100dvh] antialiased font-sans text-gray-800 flex flex-col relative">
+<body class="bg-ppeach-light min-h-screen antialiased font-sans text-gray-800 flex flex-col relative">
 
     <!-- OFFLINE INDIKATOR -->
     <div id="offline-badge" class="hidden absolute top-4 left-1/2 transform -translate-x-1/2 bg-ppeach text-ppeach-dark text-xs md:text-sm font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2 z-50 shrink-0">
@@ -70,7 +68,7 @@ v3.0 - [AKTUELL] Design & Architektur Update:
     </div>
 
     <!-- LADE BEREICH -->
-    <div id="loading-screen" class="min-h-[100dvh] flex flex-col items-center justify-center p-4 fade-in">
+    <div id="loading-screen" class="min-h-screen flex flex-col items-center justify-center p-4 fade-in">
         <div class="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full text-center border border-pgreen">
             <i data-lucide="loader-2" id="loading-spinner" class="w-12 h-12 text-pgreen-dark animate-spin mx-auto mb-4 shrink-0"></i>
             <h1 class="text-2xl font-bold mb-2 text-gray-800">Lade Rezepte...</h1>
@@ -80,7 +78,7 @@ v3.0 - [AKTUELL] Design & Architektur Update:
     </div>
 
     <!-- HAUPT-APP BEREICH -->
-    <div id="main-app" class="hidden flex-1 flex flex-col min-h-0">
+    <div id="main-app" class="hidden flex-grow flex flex-col">
         
         <!-- Header Bereich -->
         <header class="bg-pgreen text-pgreen-dark py-6 md:py-8 shadow-md rounded-b-3xl mb-8 relative shrink-0">
@@ -123,7 +121,7 @@ v3.0 - [AKTUELL] Design & Architektur Update:
             </div>
         </header>
 
-        <main class="max-w-4xl mx-auto px-4 pb-12 flex-1 w-full flex flex-col min-h-0">
+        <main class="max-w-4xl mx-auto px-4 pb-12 flex-grow w-full">
             
             <!-- Eingabe-Bereich für Zutaten -->
             <section class="bg-white rounded-2xl shadow-sm p-6 mb-8 border border-ppeach relative z-10 shrink-0">
@@ -157,7 +155,7 @@ v3.0 - [AKTUELL] Design & Architektur Update:
             </section>
 
             <!-- Ergebnisse der Zutaten-Suche -->
-            <section id="results-section" class="flex-1 min-h-0">
+            <section id="results-section">
                 <div id="perfect-matches-container" class="mb-10 hidden fade-in">
                     <h2 class="text-2xl font-bold mb-4 text-pgreen-dark flex items-center gap-2">
                         <i data-lucide="party-popper" class="w-7 h-7 shrink-0"></i>
@@ -329,8 +327,8 @@ v3.0 - [AKTUELL] Design & Architektur Update:
                             <strong>Windows:</strong> Öffnen Sie die Website im Edge Browser und klicken Sie in der Adressleiste auf dieses Symbol
                         </p>
                     </div>
-                    <!-- Bild Edge -->
-                    <img src="AppEdge.png" alt="Edge App Installieren" class="mt-4 rounded-xl shadow-md border border-gray-100 max-w-full h-auto md:ml-6">
+                    <!-- Bild Edge mit fixierter, identischer Höhe -->
+                    <img src="AppEdge.png" alt="Edge App Installieren" class="mt-4 rounded-xl shadow-md border border-gray-100 h-28 sm:h-32 w-auto object-contain object-left md:ml-6">
                 </div>
 
                 <hr class="border-gray-100">
@@ -343,8 +341,8 @@ v3.0 - [AKTUELL] Design & Architektur Update:
                             <strong>iPad:</strong> Öffnen Sie die Website im Safari Browser und tippen Sie auf das Teilen-Symbol. Wählen Sie anschließend zum Home-Bildschirm aus
                         </p>
                     </div>
-                    <!-- Bild Safari -->
-                    <img src="AppSafari.jpg" alt="Safari App Installieren" class="mt-4 rounded-xl shadow-md border border-gray-100 max-w-full h-auto md:ml-6">
+                    <!-- Bild Safari mit fixierter, identischer Höhe -->
+                    <img src="AppSafari.jpg" alt="Safari App Installieren" class="mt-4 rounded-xl shadow-md border border-gray-100 h-28 sm:h-32 w-auto object-contain object-left md:ml-6">
                 </div>
 
             </div>
@@ -986,7 +984,7 @@ v3.0 - [AKTUELL] Design & Architektur Update:
         });
 
         // ---------------------------------------------------------
-        // PWA REGISTRIERUNG & MANIFEST
+        // PWA REGISTRIERUNG & MANIFEST (Inkl. Edge-Fix für 192x192 Icon)
         // ---------------------------------------------------------
         const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 24 24" fill="none" stroke="#2b7a5c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"></path><line x1="6" y1="17" x2="18" y2="17"></line></svg>`;
         const encodedIcon = "data:image/svg+xml;base64," + btoa(svgIcon);
@@ -998,12 +996,20 @@ v3.0 - [AKTUELL] Design & Architektur Update:
             display: "standalone",
             background_color: "#fff0e5",
             theme_color: "#a8e6cf",
-            icons: [{
-                src: encodedIcon,
-                sizes: "512x512",
-                type: "image/svg+xml",
-                purpose: "any maskable"
-            }]
+            icons: [
+                {
+                    src: encodedIcon,
+                    sizes: "192x192",
+                    type: "image/svg+xml",
+                    purpose: "any maskable"
+                },
+                {
+                    src: encodedIcon,
+                    sizes: "512x512",
+                    type: "image/svg+xml",
+                    purpose: "any maskable"
+                }
+            ]
         };
         const manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
         const manifestUrl = URL.createObjectURL(manifestBlob);
