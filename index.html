@@ -6,10 +6,11 @@ VERSIONSVERLAUF (Version History)
 ======================================================================
 v1.0 bis v3.0 - Aufbau, Live-Daten, Offline-Storage, Pastell-Design
 v3.1 - Chrome/Edge Fixes (natürliche Scroll-Höhen)
-v3.2 - PWA Manifest Update (externe manifest.json & PNG-Icons)
-v3.3 - [AKTUELL] Feature Update:
-       - Bis zu 10 Zubereitungsschritte integriert.
-       - Druckfunktion (als PDF/Papier) eingebaut.
+v3.2 - [AKTUELL] PWA Manifest Update:
+       - Dynamisches Blob-Manifest komplett entfernt.
+       - Echten <link rel="manifest"> im Head hinzugefügt.
+       - Erfordert nun externe manifest.json & PNG-Icons (192x192 & 512x512)
+         im GitHub Repo für die fehlerfreie Chrome/Edge App-Installation.
 ======================================================================
 -->
 <head>
@@ -262,14 +263,9 @@ v3.3 - [AKTUELL] Feature Update:
                         <span id="modal-note" class="flex items-center gap-1.5 hidden shrink-0"><i data-lucide="leaf" class="w-4 h-4 shrink-0"></i> Hinweis</span>
                     </div>
                 </div>
-                <div class="flex items-center gap-2 ml-4 shrink-0">
-                    <button id="print-modal-btn" class="bg-white p-2 rounded-full shadow-sm hover:bg-gray-100 text-gray-500 transition shrink-0" title="Rezept drucken">
-                        <i data-lucide="printer" class="w-6 h-6 shrink-0"></i>
-                    </button>
-                    <button id="close-modal-btn" class="bg-white p-2 rounded-full shadow-sm hover:bg-gray-100 text-gray-500 transition shrink-0" title="Schließen">
-                        <i data-lucide="x" class="w-6 h-6 shrink-0"></i>
-                    </button>
-                </div>
+                <button id="close-modal-btn" class="bg-white p-2 rounded-full shadow-sm hover:bg-gray-100 text-gray-500 transition shrink-0 ml-4">
+                    <i data-lucide="x" class="w-6 h-6 shrink-0"></i>
+                </button>
             </div>
 
             <!-- Modal Content (Scrollbar) -->
@@ -400,13 +396,7 @@ v3.3 - [AKTUELL] Feature Update:
                 })
                 .then(csvText => {
                     try {
-                        // Daten für Offline sichern (mit extra try-catch für blockierte Vorschau-Fenster)
-                        try {
-                            localStorage.setItem(CACHE_KEY, csvText); 
-                        } catch (storageErr) {
-                            console.warn("Offline-Speichern blockiert (z.B. in der Vorschau).");
-                        }
-                        
+                        localStorage.setItem(CACHE_KEY, csvText); // Daten für Offline sichern
                         processCSV(csvText);
                         document.getElementById('offline-badge').classList.add('hidden');
                         document.getElementById('loading-screen').classList.add('hidden');
@@ -421,13 +411,7 @@ v3.3 - [AKTUELL] Feature Update:
                     console.warn("Offline oder Netzwerkfehler. Suche nach gespeicherten Rezepten...", error);
                     
                     // OFFLINE FALLBACK: Lade aus dem lokalen Speicher
-                    let cachedCsv = null;
-                    try {
-                        cachedCsv = localStorage.getItem(CACHE_KEY);
-                    } catch (storageErr) {
-                        console.warn("Zugriff auf lokalen Speicher blockiert.");
-                    }
-
+                    const cachedCsv = localStorage.getItem(CACHE_KEY);
                     if (cachedCsv) {
                         try {
                             processCSV(cachedCsv);
@@ -554,7 +538,7 @@ v3.3 - [AKTUELL] Feature Update:
                     }
                 }
 
-                for (let j = 1; j <= 10; j++) {
+                for (let j = 1; j <= 5; j++) {
                     const num = String(j).padStart(2, '0');
                     const step = rowData[`Schritt_${num}`];
                     if (step && step.trim() !== '') {
@@ -924,120 +908,6 @@ v3.3 - [AKTUELL] Feature Update:
             if (e.target === modal) closeModal();
         });
 
-        document.getElementById('print-modal-btn').addEventListener('click', printRecipe);
-
-        function printRecipe() {
-            if (!currentOpenRecipe) return;
-
-            const printWindow = window.open('', '_blank');
-            if (!printWindow) {
-                alert("Bitte erlaube Pop-ups in deinem Browser, um das Rezept zu drucken.");
-                return;
-            }
-
-            let ingredientsHTML = '';
-            currentOpenRecipe.displayIngredients.forEach(ing => {
-                let finalAmountDisplay = '';
-                if (ing.amount && ing.amount.trim() !== '' && ing.amount !== '0') {
-                    let parsedAmount = parseFloat(ing.amount.replace(',', '.'));
-                    if (!isNaN(parsedAmount)) {
-                        let newAmount = (parsedAmount / basePortions) * currentPortions;
-                        newAmount = Math.round(newAmount * 100) / 100;
-                        finalAmountDisplay = newAmount.toString().replace('.', ',');
-                    } else {
-                        finalAmountDisplay = ing.amount;
-                    }
-                }
-                
-                let displayParts = [];
-                if (finalAmountDisplay) displayParts.push(finalAmountDisplay);
-                if (ing.unit) displayParts.push(ing.unit);
-                let amountStr = displayParts.join(' ');
-
-                ingredientsHTML += `<li><span class="ing-name">${ing.name}</span> <span class="ing-amount">${amountStr}</span></li>`;
-            });
-
-            let stepsHTML = '';
-            currentOpenRecipe.steps.forEach((step, index) => {
-                stepsHTML += `<li>${step}</li>`;
-            });
-
-            const metaTags = [];
-            if (currentOpenRecipe.time) metaTags.push(`Zeit: ${currentOpenRecipe.time} Min.`);
-            if (currentOpenRecipe.difficulty) metaTags.push(`Schwierigkeit: ${currentOpenRecipe.difficulty}`);
-            if (currentOpenRecipe.category) metaTags.push(`Kategorie: ${currentOpenRecipe.category}`);
-            if (currentOpenRecipe.technique) metaTags.push(`Technik: ${currentOpenRecipe.technique}`);
-            if (currentOpenRecipe.note) metaTags.push(`Hinweis: ${currentOpenRecipe.note}`);
-
-            const html = `
-                <!DOCTYPE html>
-                <html lang="de">
-                <head>
-                    <meta charset="UTF-8">
-                    <title>${currentOpenRecipe.title} - Rezept</title>
-                    <style>
-                        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1f2937; line-height: 1.6; max-width: 900px; margin: 0 auto; padding: 40px; }
-                        h1 { font-size: 28pt; margin-bottom: 8px; color: #064e3b; }
-                        .meta { color: #4b5563; font-size: 11pt; margin-bottom: 30px; font-style: italic; border-bottom: 2px solid #a8e6cf; padding-bottom: 15px; }
-                        .content-grid { display: flex; gap: 50px; }
-                        .ingredients-col { width: 35%; flex-shrink: 0; }
-                        .steps-col { width: 65%; }
-                        h2 { font-size: 16pt; color: #064e3b; margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; }
-                        .portions { font-weight: 600; margin-bottom: 15px; color: #374151; background: #e8f8f2; padding: 5px 10px; border-radius: 5px; display: inline-block; border: 1px solid #a8e6cf; }
-                        ul.ingredients { list-style-type: none; padding: 0; margin: 0; }
-                        ul.ingredients li { padding: 8px 0; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; font-size: 11pt; }
-                        ul.ingredients li:last-child { border-bottom: none; }
-                        .ing-name { font-weight: 600; color: #111827; padding-right: 15px; }
-                        .ing-amount { color: #4b5563; text-align: right; }
-                        ol.steps { padding-left: 0; margin: 0; list-style-type: none; counter-reset: step-counter; }
-                        ol.steps li { margin-bottom: 20px; font-size: 11pt; position: relative; padding-left: 40px; text-align: justify; }
-                        ol.steps li::before { content: counter(step-counter); counter-increment: step-counter; position: absolute; left: 0; top: 0; background: #a8e6cf; color: #064e3b; font-weight: bold; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10pt; border: 1px solid #2b7a5c; }
-                        
-                        @media print {
-                            body { padding: 0; max-width: 100%; }
-                            @page { margin: 1.5cm; }
-                            .content-grid { display: block; }
-                            .ingredients-col { width: 100%; margin-bottom: 40px; page-break-inside: avoid; }
-                            .steps-col { width: 100%; }
-                            ol.steps li { page-break-inside: avoid; }
-                        }
-                    </style>
-                </head>
-                <body>
-                    <h1>${currentOpenRecipe.title}</h1>
-                    <div class="meta">${metaTags.join(' &nbsp;|&nbsp; ')}</div>
-                    
-                    <div class="content-grid">
-                        <div class="ingredients-col">
-                            <h2>Zutaten</h2>
-                            <div class="portions">Für ${currentPortions} Personen</div>
-                            <ul class="ingredients">
-                                ${ingredientsHTML}
-                            </ul>
-                        </div>
-                        <div class="steps-col">
-                            <h2>Zubereitung</h2>
-                            <ol class="steps">
-                                ${stepsHTML}
-                            </ol>
-                        </div>
-                    </div>
-                    
-                    <script>
-                        window.onload = function() { 
-                            setTimeout(function() {
-                                window.print(); 
-                            }, 500);
-                        }
-                    </script>
-                </body>
-                </html>
-            `;
-
-            printWindow.document.open();
-            printWindow.document.write(html);
-            printWindow.document.close();
-        }
 
         // ---------------------------------------------------------
         // LEGAL MODAL LOGIK (Impressum & Datenschutz)
