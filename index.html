@@ -4,15 +4,17 @@
 ======================================================================
 VERSIONSVERLAUF (Version History)
 ======================================================================
-v1.0 bis v3.0 - Aufbau, Live-Daten, Offline-Storage, Pastell-Design
-v3.1 - Chrome/Edge Fixes (natürliche Scroll-Höhen)
-v3.2 - PWA Manifest Update (externe manifest.json & PNG-Icons)
+v1.0 bis v3.2 - Aufbau, Live-Daten, Offline-Storage, Pastell-Design, PWA
 v3.3 - Feature Update (10 Schritte + Druckfunktion)
-v3.4 - [AKTUELL] Hotfix Update:
-       - Fatalen </script> Parse-Error in der Druckfunktion behoben.
-       - Lucide-Icons durch typeof-Checks abgesichert (verhindert
-         Abstürze in restriktiven Schul-WLANs oder der Vorschau).
-       - Deutlichere Fehlermeldung bei Netzwerkproblemen.
+v3.4 - Hotfix Update (Parse-Error, Lucide Fallbacks)
+v3.5 - [AKTUELL] Usability & Print Update:
+       - PDF: Kopf-/Fußzeilen ausgeblendet (@page margin: 0)
+       - PDF: Zutaten-Layout gedreht (Menge links, Name rechts)
+       - Feature: "Tipp"-Spalte integriert (UI & Print)
+       - Feature: Auto-Fettung von Zeitangaben in den Schritten
+       - Feature: Schwierigkeitsgrade durch 1-4 Sterne ersetzt
+       - UI-Fix: "Keine Ergebnisse"-Box verkleinert & Logik-Bug behoben
+       - Matching: Toleranz auf 3 fehlende Zutaten angehoben
 ======================================================================
 -->
 <head>
@@ -21,7 +23,7 @@ v3.4 - [AKTUELL] Hotfix Update:
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rezepte finden</title>
     
-    <!-- PWA Manifest & Theme Color (Zwingend für App-Installation) -->
+    <!-- PWA Manifest & Theme Color -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#a8e6cf">
     
@@ -91,23 +93,17 @@ v3.4 - [AKTUELL] Hotfix Update:
         <header class="bg-pgreen text-pgreen-dark py-6 md:py-8 shadow-md rounded-b-3xl mb-8 relative shrink-0">
             <div class="max-w-6xl mx-auto px-4">
                 
-                <!-- Top Row: Logos and Title (Bulletproof CSS Grid) -->
+                <!-- Top Row: Logos and Title -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center mb-8">
-                    
-                    <!-- Left Logo (Schulamt Dachau) -->
                     <div class="flex justify-center md:justify-start order-2 md:order-1">
                         <img src="Logo_Schulamt_Dachau.png" alt="Schulamt Dachau Logo" class="h-10 md:h-12 lg:h-14 object-contain drop-shadow-md">
                     </div>
-
-                    <!-- Center Title -->
                     <div class="text-center order-1 md:order-2">
                         <h1 class="text-3xl md:text-4xl font-bold flex justify-center items-center gap-3">
                             <i data-lucide="chef-hat" class="w-8 h-8 md:w-10 md:h-10 shrink-0"></i>
                             <span class="leading-tight">Schulküchen-<br class="md:hidden">Rezeptfinder</span>
                         </h1>
                     </div>
-
-                    <!-- Right Logo (BdB) -->
                     <div class="flex justify-center md:justify-end order-3 md:order-3">
                         <img src="logo_bdb.png" alt="BdB Logo" class="h-10 md:h-12 lg:h-14 object-contain drop-shadow-md">
                     </div>
@@ -174,17 +170,16 @@ v3.4 - [AKTUELL] Hotfix Update:
                 <div id="partial-matches-container" class="hidden fade-in">
                     <h2 class="text-xl font-bold mb-4 text-ppeach-dark flex items-center gap-2">
                         <i data-lucide="lightbulb" class="w-6 h-6 shrink-0"></i>
-                        Fast komplett (es fehlen max. 2 Zutaten)
+                        Fast komplett (es fehlen max. 3 Zutaten)
                     </h2>
                     <div id="partial-matches-list" class="grid grid-cols-1 md:grid-cols-2 gap-5"></div>
                 </div>
 
-                <div id="no-results" class="text-center py-16 hidden fade-in bg-white rounded-2xl shadow-sm border border-gray-100">
-                    <div class="bg-gray-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <i data-lucide="search-x" class="w-12 h-12 text-gray-400 shrink-0"></i>
-                    </div>
-                    <h3 class="text-xl font-bold text-gray-600">Noch keine passenden Rezepte gefunden.</h3>
-                    <p class="text-gray-500 mt-2">Füge noch weitere Zutaten hinzu, um Vorschläge zu erhalten.</p>
+                <!-- Kleiner, unauffälliger No-Results Kasten -->
+                <div id="no-results" class="hidden fade-in bg-gray-50 rounded-xl p-5 text-center border border-gray-200 mt-8 max-w-sm mx-auto shadow-inner">
+                    <i data-lucide="search-x" class="w-8 h-8 text-gray-300 mx-auto mb-2 shrink-0"></i>
+                    <h3 class="font-semibold text-gray-600">Noch keine passenden Rezepte gefunden.</h3>
+                    <p class="text-gray-500 text-sm mt-1">Füge noch weitere Zutaten hinzu.</p>
                 </div>
             </section>
 
@@ -259,7 +254,7 @@ v3.4 - [AKTUELL] Hotfix Update:
                             <button id="btn-portions-plus" class="w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/50 transition font-bold leading-none select-none shrink-0">+</button>
                         </div>
                         <span id="modal-time" class="flex items-center gap-1.5 shrink-0"><i data-lucide="clock" class="w-4 h-4 shrink-0"></i> Zeit</span>
-                        <span id="modal-difficulty" class="flex items-center gap-1.5 shrink-0"><i data-lucide="bar-chart" class="w-4 h-4 shrink-0"></i> Schwierigkeit</span>
+                        <span id="modal-difficulty" class="flex items-center gap-1 shrink-0"></span> <!-- Sterne Container -->
                         <span id="modal-category" class="flex items-center gap-1.5 hidden shrink-0"><i data-lucide="tag" class="w-4 h-4 shrink-0"></i> Kategorie</span>
                         <span id="modal-technique" class="flex items-center gap-1.5 hidden shrink-0"><i data-lucide="flame" class="w-4 h-4 shrink-0"></i> Technik</span>
                         <span id="modal-note" class="flex items-center gap-1.5 hidden shrink-0"><i data-lucide="leaf" class="w-4 h-4 shrink-0"></i> Hinweis</span>
@@ -297,6 +292,14 @@ v3.4 - [AKTUELL] Hotfix Update:
                         <ol id="modal-steps" class="space-y-4 text-gray-700">
                             <!-- Wird per JS gefüllt -->
                         </ol>
+
+                        <!-- Dynamischer Tipp Bereich -->
+                        <div id="modal-tipp-container" class="mt-8 bg-amber-50 p-4 rounded-xl border border-amber-200 hidden">
+                            <h4 class="font-bold text-amber-800 flex items-center gap-2 mb-2">
+                                <i data-lucide="lightbulb" class="w-5 h-5 shrink-0"></i> Tipp:
+                            </h4>
+                            <p id="modal-tipp-text" class="text-amber-900 text-sm leading-relaxed"></p>
+                        </div>
                     </div>
 
                 </div>
@@ -339,7 +342,7 @@ v3.4 - [AKTUELL] Hotfix Update:
                             <strong>Windows:</strong> Öffnen Sie die Website im Edge Browser und klicken Sie in der Adressleiste auf dieses Symbol
                         </p>
                     </div>
-                    <!-- Bild Edge mit fixierter, identischer Höhe -->
+                    <!-- Bild Edge -->
                     <img src="AppEdge.png" alt="Edge App Installieren" class="mt-4 rounded-xl shadow-md border border-gray-100 h-28 sm:h-32 w-auto object-contain object-left md:ml-6">
                 </div>
 
@@ -353,7 +356,7 @@ v3.4 - [AKTUELL] Hotfix Update:
                             <strong>iPad:</strong> Öffnen Sie die Website im Safari Browser und tippen Sie auf das Teilen-Symbol. Wählen Sie anschließend zum Home-Bildschirm aus
                         </p>
                     </div>
-                    <!-- Bild Safari mit fixierter, identischer Höhe -->
+                    <!-- Bild Safari -->
                     <img src="AppSafari.jpg" alt="Safari App Installieren" class="mt-4 rounded-xl shadow-md border border-gray-100 h-28 sm:h-32 w-auto object-contain object-left md:ml-6">
                 </div>
 
@@ -366,6 +369,44 @@ v3.4 - [AKTUELL] Hotfix Update:
         if (typeof lucide !== 'undefined') {
             lucide.createIcons();
         }
+
+        // ---------------------------------------------------------
+        // HILFSFUNKTIONEN (Sterne & Zeit-Fettung)
+        // ---------------------------------------------------------
+        function formatTimeInText(text) {
+            // Sucht nach Zahlen gefolgt von Min., min, Minuten, Stunde, h etc. und macht sie fett
+            return text.replace(/(\d+(?:,\d+)?\s*(?:Min\.|Minuten|min|Stunde|Stunden|h\b))/gi, '<strong>$1</strong>');
+        }
+
+        function getDifficultyStars(diff, isPdf = false) {
+            if (!diff) return '';
+            let count = 0;
+            let d = diff.toLowerCase();
+            if(d.includes('leicht')) count = 1;
+            else if(d.includes('mittel')) count = 2;
+            else if(d.includes('fortgeschritten')) count = 3;
+            else if(d.includes('schwer')) count = 4;
+            
+            if(count === 0) return diff; // Fallback, falls ein ganz anderes Wort drin steht
+            
+            // Für das saubere PDF nutzen wir Unicode-Sterne, für die App schöne SVG-Sterne
+            if (isPdf) {
+                let stars = '';
+                for(let i=0; i<4; i++) stars += (i < count) ? '★' : '☆';
+                return `<span style="color: #d97706; font-size: 13pt; letter-spacing: 2px;">${stars}</span>`;
+            }
+
+            let stars = '';
+            for(let i=0; i<4; i++) {
+                if(i < count) {
+                    stars += '<svg class="w-4 h-4 text-amber-400 fill-current shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+                } else {
+                    stars += '<svg class="w-4 h-4 text-gray-300 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+                }
+            }
+            return `<div class="flex items-center gap-0.5" title="${diff}">${stars}</div>`;
+        }
+
 
         // ---------------------------------------------------------
         // OFFLINE ANZEIGE STEUERUNG
@@ -405,11 +446,10 @@ v3.4 - [AKTUELL] Hotfix Update:
                 })
                 .then(csvText => {
                     try {
-                        // Daten für Offline sichern (mit extra try-catch für blockierte Vorschau-Fenster)
                         try {
                             localStorage.setItem(CACHE_KEY, csvText); 
                         } catch (storageErr) {
-                            console.warn("Offline-Speichern blockiert (z.B. in der Vorschau).");
+                            console.warn("Offline-Speichern blockiert.");
                         }
                         
                         processCSV(csvText);
@@ -425,13 +465,10 @@ v3.4 - [AKTUELL] Hotfix Update:
                 .catch(error => {
                     console.warn("Offline oder Netzwerkfehler. Suche nach gespeicherten Rezepten...", error);
                     
-                    // OFFLINE FALLBACK: Lade aus dem lokalen Speicher
                     let cachedCsv = null;
                     try {
                         cachedCsv = localStorage.getItem(CACHE_KEY);
-                    } catch (storageErr) {
-                        console.warn("Zugriff auf lokalen Speicher blockiert.");
-                    }
+                    } catch (storageErr) {}
 
                     if (cachedCsv) {
                         try {
@@ -439,7 +476,6 @@ v3.4 - [AKTUELL] Hotfix Update:
                             document.getElementById('offline-badge').classList.remove('hidden');
                             document.getElementById('loading-screen').classList.add('hidden');
                             document.getElementById('main-app').classList.remove('hidden');
-                            console.log("Gespeicherte Offline-Daten erfolgreich geladen.");
                         } catch(e) {
                             showError("Fehler beim Lesen der gespeicherten Offline-Daten.");
                         }
@@ -450,7 +486,6 @@ v3.4 - [AKTUELL] Hotfix Update:
         });
 
         function showError(msg) {
-            // Zeige Fehler viel deutlicher an, damit man nicht denkt, es lädt noch
             const titleEl = document.querySelector('#loading-screen h1');
             if (titleEl) {
                 titleEl.textContent = "Verbindung fehlgeschlagen";
@@ -538,6 +573,7 @@ v3.4 - [AKTUELL] Hotfix Update:
                     time: rowData['Zeit_min'] || '',
                     technique: rowData['Haupttechnik'] || '',
                     note: rowData['Hinweis'] || '',
+                    tipp: rowData['Tipp'] || '', // NEUE SPALTE AUSGELESEN
                     portions: rowData['Portionen'] || '4',
                     displayIngredients: [], 
                     searchableIngredients: [],
@@ -753,15 +789,18 @@ v3.4 - [AKTUELL] Hotfix Update:
                 if (missing.length === 0 && recipe.searchableIngredients.length > 0) {
                     perfectList.appendChild(createRecipeCard(recipe, []));
                     perfectCount++;
-                } else if (missing.length <= 2 && missing.length > 0 && hasOverlap) {
+                } else if (missing.length <= 3 && missing.length > 0 && hasOverlap) { // ERHÖHT AUF 3
                     partialList.appendChild(createRecipeCard(recipe, missing));
                     partialCount++;
                 }
             });
 
+            // Zeige Container nur, wenn es Ergebnisse gibt
             perfectMatchesContainer.classList.toggle('hidden', perfectCount === 0);
             partialMatchesContainer.classList.toggle('hidden', partialCount === 0);
-            noResultsContainer.classList.toggle('hidden', perfectCount === 0 && partialCount === 0);
+            
+            // Logik-Fix: Zeige "Keine Ergebnisse" Box NUR, wenn wirklich 0 Ergebnisse vorliegen
+            noResultsContainer.classList.toggle('hidden', perfectCount > 0 || partialCount > 0);
         }
 
         function createRecipeCard(recipe, missingIngredients) {
@@ -778,7 +817,7 @@ v3.4 - [AKTUELL] Hotfix Update:
                 
                 <div class="flex flex-wrap gap-2 mb-4 border-b border-gray-100 pb-3">
                     ${recipe.time ? `<span class="inline-flex items-center gap-1 text-xs font-medium bg-gray-100 text-gray-600 px-2 py-1 rounded-md shrink-0"><i data-lucide="clock" class="w-3 h-3 shrink-0"></i> ${recipe.time} Min.</span>` : ''}
-                    ${recipe.difficulty ? `<span class="inline-flex items-center gap-1 text-xs font-medium bg-blue-50 text-blue-600 px-2 py-1 rounded-md shrink-0"><i data-lucide="bar-chart" class="w-3 h-3 shrink-0"></i> ${recipe.difficulty}</span>` : ''}
+                    ${recipe.difficulty ? `<span class="inline-flex items-center gap-1 text-xs font-medium bg-blue-50 text-blue-600 px-2 py-1 rounded-md shrink-0">${getDifficultyStars(recipe.difficulty)}</span>` : ''}
                     ${recipe.category ? `<span class="inline-flex items-center gap-1 text-xs font-medium bg-purple-50 text-purple-600 px-2 py-1 rounded-md shrink-0"><i data-lucide="tag" class="w-3 h-3 shrink-0"></i> ${recipe.category}</span>` : ''}
                     ${recipe.technique ? `<span class="inline-flex items-center gap-1 text-xs font-medium bg-amber-50 text-amber-600 px-2 py-1 rounded-md shrink-0"><i data-lucide="flame" class="w-3 h-3 shrink-0"></i> ${recipe.technique}</span>` : ''}
                     ${recipe.note ? `<span class="inline-flex items-center gap-1 text-xs font-medium bg-pgreen-light text-pgreen-dark px-2 py-1 rounded-md shrink-0"><i data-lucide="leaf" class="w-3 h-3 shrink-0"></i> ${recipe.note}</span>` : ''}
@@ -876,8 +915,13 @@ v3.4 - [AKTUELL] Hotfix Update:
             const timeStr = recipe.time ? `${recipe.time} Min.` : 'k.A.';
             document.getElementById('modal-time').innerHTML = `<i data-lucide="clock" class="w-4 h-4 shrink-0"></i> ${timeStr}`;
             
-            const diffStr = recipe.difficulty ? recipe.difficulty : 'k.A.';
-            document.getElementById('modal-difficulty').innerHTML = `<i data-lucide="bar-chart" class="w-4 h-4 shrink-0"></i> ${diffStr}`;
+            const diffStr = recipe.difficulty ? getDifficultyStars(recipe.difficulty) : '';
+            if (diffStr) {
+                document.getElementById('modal-difficulty').innerHTML = diffStr;
+                document.getElementById('modal-difficulty').classList.remove('hidden');
+            } else {
+                document.getElementById('modal-difficulty').classList.add('hidden');
+            }
 
             const catEl = document.getElementById('modal-category');
             if (recipe.category && recipe.category.trim() !== '') {
@@ -911,14 +955,24 @@ v3.4 - [AKTUELL] Hotfix Update:
                 recipe.steps.forEach((step, index) => {
                     const li = document.createElement('li');
                     li.className = "flex gap-4";
+                    // Hier greift die neue Auto-Fettung für Zeiten
                     li.innerHTML = `
                         <span class="flex-shrink-0 w-8 h-8 rounded-full bg-pgreen text-pgreen-dark font-bold flex items-center justify-center text-sm shrink-0">${index + 1}</span>
-                        <p class="pt-1 leading-relaxed min-w-0">${step}</p>
+                        <p class="pt-1 leading-relaxed min-w-0">${formatTimeInText(step)}</p>
                     `;
                     stepList.appendChild(li);
                 });
             } else {
                 stepList.innerHTML = '<p class="text-gray-500 italic">Keine Anleitung hinterlegt.</p>';
+            }
+
+            // Tipp anzeigen, falls vorhanden
+            const tippContainer = document.getElementById('modal-tipp-container');
+            if (recipe.tipp && recipe.tipp.trim() !== '') {
+                document.getElementById('modal-tipp-text').innerHTML = formatTimeInText(recipe.tipp);
+                tippContainer.classList.remove('hidden');
+            } else {
+                tippContainer.classList.add('hidden');
             }
 
             if (typeof lucide !== 'undefined') lucide.createIcons({ root: modal });
@@ -936,6 +990,9 @@ v3.4 - [AKTUELL] Hotfix Update:
             if (e.target === modal) closeModal();
         });
 
+        // ---------------------------------------------------------
+        // DRUCK-FUNKTION (PDF)
+        // ---------------------------------------------------------
         document.getElementById('print-modal-btn').addEventListener('click', printRecipe);
 
         function printRecipe() {
@@ -947,6 +1004,7 @@ v3.4 - [AKTUELL] Hotfix Update:
                 return;
             }
 
+            // Zutaten generieren (Menge LINKS, Name RECHTS für den Ausdruck)
             let ingredientsHTML = '';
             currentOpenRecipe.displayIngredients.forEach(ing => {
                 let finalAmountDisplay = '';
@@ -966,17 +1024,30 @@ v3.4 - [AKTUELL] Hotfix Update:
                 if (ing.unit) displayParts.push(ing.unit);
                 let amountStr = displayParts.join(' ');
 
-                ingredientsHTML += `<li><span class="ing-name">${ing.name}</span> <span class="ing-amount">${amountStr}</span></li>`;
+                // Neues Layout für PDF
+                ingredientsHTML += `<li><span class="ing-amount">${amountStr}</span> <span class="ing-name">${ing.name}</span></li>`;
             });
 
+            // Schritte generieren
             let stepsHTML = '';
             currentOpenRecipe.steps.forEach((step, index) => {
-                stepsHTML += `<li>${step}</li>`;
+                stepsHTML += `<li>${formatTimeInText(step)}</li>`;
             });
 
+            // Tipp anhängen (falls vorhanden)
+            let tippHTML = '';
+            if (currentOpenRecipe.tipp && currentOpenRecipe.tipp.trim() !== '') {
+                tippHTML = `
+                    <div class="tipp-box">
+                        <strong>Tipp:</strong> ${formatTimeInText(currentOpenRecipe.tipp)}
+                    </div>
+                `;
+            }
+
+            // Metadaten
             const metaTags = [];
             if (currentOpenRecipe.time) metaTags.push(`Zeit: ${currentOpenRecipe.time} Min.`);
-            if (currentOpenRecipe.difficulty) metaTags.push(`Schwierigkeit: ${currentOpenRecipe.difficulty}`);
+            if (currentOpenRecipe.difficulty) metaTags.push(`Schwierigkeit: ${getDifficultyStars(currentOpenRecipe.difficulty, true)}`);
             if (currentOpenRecipe.category) metaTags.push(`Kategorie: ${currentOpenRecipe.category}`);
             if (currentOpenRecipe.technique) metaTags.push(`Technik: ${currentOpenRecipe.technique}`);
             if (currentOpenRecipe.note) metaTags.push(`Hinweis: ${currentOpenRecipe.note}`);
@@ -988,32 +1059,48 @@ v3.4 - [AKTUELL] Hotfix Update:
                     <meta charset="UTF-8">
                     <title>${currentOpenRecipe.title} - Rezept</title>
                     <style>
+                        /* Grundlegende Formate */
                         body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1f2937; line-height: 1.4; max-width: 1000px; margin: 0 auto; padding: 30px; box-sizing: border-box; }
                         h1 { font-size: 24pt; margin-bottom: 5px; color: #064e3b; }
                         .meta { color: #4b5563; font-size: 10pt; margin-bottom: 20px; font-style: italic; border-bottom: 2px solid #a8e6cf; padding-bottom: 10px; }
+                        
+                        /* Zweispaltiges Layout festsetzen */
                         .content-grid { display: flex; gap: 40px; align-items: flex-start; }
                         .ingredients-col { width: 35%; flex-shrink: 0; }
                         .steps-col { width: 65%; }
+                        
                         h2 { font-size: 14pt; color: #064e3b; margin-top: 0; margin-bottom: 10px; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; }
                         .portions { font-weight: 600; margin-bottom: 10px; color: #374151; background: #e8f8f2; padding: 4px 8px; border-radius: 5px; display: inline-block; border: 1px solid #a8e6cf; font-size: 10pt; }
+                        
+                        /* Layout Zutaten: Menge Links, Name Rechts */
                         ul.ingredients { list-style-type: none; padding: 0; margin: 0; }
-                        ul.ingredients li { padding: 5px 0; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; font-size: 10pt; }
+                        ul.ingredients li { padding: 5px 0; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: flex-start; gap: 10px; font-size: 10pt; }
                         ul.ingredients li:last-child { border-bottom: none; }
-                        .ing-name { font-weight: 600; color: #111827; padding-right: 15px; }
-                        .ing-amount { color: #4b5563; text-align: right; }
+                        .ing-amount { font-weight: 600; color: #111827; text-align: left; min-width: 80px; flex-shrink: 0; }
+                        .ing-name { color: #4b5563; }
+                        
+                        /* Layout Schritte */
                         ol.steps { padding-left: 0; margin: 0; list-style-type: none; counter-reset: step-counter; }
                         ol.steps li { margin-bottom: 12px; font-size: 10pt; position: relative; padding-left: 35px; text-align: justify; }
                         ol.steps li::before { content: counter(step-counter); counter-increment: step-counter; position: absolute; left: 0; top: -2px; background: #a8e6cf; color: #064e3b; font-weight: bold; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9pt; border: 1px solid #2b7a5c; }
                         
+                        /* Layout Tipp-Box */
+                        .tipp-box { margin-top: 20px; padding: 15px; background-color: #fef3c7; border-left: 4px solid #f59e0b; font-size: 10pt; border-radius: 4px; color: #92400e; }
+                        
+                        /* Spezielle Anweisungen für den physischen Druck */
                         @media print {
-                            @page { size: A4 portrait; margin: 1.5cm; }
-                            body { padding: 0; width: 100%; max-width: 100%; }
+                            /* margin: 0 entfernt die Standard-Kopf/Fußzeile (Datum, URL) des Browsers! */
+                            @page { size: A4 portrait; margin: 0; } 
+                            /* Damit der Text nicht am Rand klebt, stellen wir das Padding wieder her */
+                            body { padding: 1.5cm 2cm !important; width: 100%; max-width: 100%; } 
+                            
                             /* Zwinge das Nebeneinander-Layout im Druck */
                             .content-grid { display: flex !important; flex-direction: row !important; gap: 30px; }
                             .ingredients-col { width: 35% !important; display: block !important; }
                             .steps-col { width: 65% !important; display: block !important; }
-                            /* Verhindere das Auseinanderreißen auf 2 Seiten */
-                            ol.steps li { page-break-inside: avoid; }
+                            
+                            /* Verhindere das zerschneiden von Schritten auf 2 Seiten */
+                            ol.steps li, .tipp-box { page-break-inside: avoid; }
                         }
                     </style>
                 </head>
@@ -1034,10 +1121,12 @@ v3.4 - [AKTUELL] Hotfix Update:
                             <ol class="steps">
                                 ${stepsHTML}
                             </ol>
+                            ${tippHTML}
                         </div>
                     </div>
                     
                     <script>
+                        // Startet den Druckdialog automatisch, wenn die Seite aufgebaut ist
                         window.onload = function() { 
                             setTimeout(function() {
                                 window.print(); 
@@ -1135,11 +1224,10 @@ v3.4 - [AKTUELL] Hotfix Update:
         // ---------------------------------------------------------
         // PWA REGISTRIERUNG (Service Worker)
         // ---------------------------------------------------------
-        // Saubere Registrierung der externen 'sw.js' Datei für den Offline-Modus
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js').then((registration) => {
-                    console.log('PWA Service Worker bereit (Externe Datei).');
+                    console.log('PWA Service Worker bereit.');
                 }).catch((err) => {
                     console.error('Service Worker Fehler:', err);
                 });
