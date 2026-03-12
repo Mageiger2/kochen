@@ -4,14 +4,15 @@
 ======================================================================
 VERSIONSVERLAUF (Version History)
 ======================================================================
-v1.0 bis v4.1 - PWA, Kategorien, Fuzzy Search, Guided Cooking, Layout-Fixes
-v4.3 - [AKTUELL] Das große Apple & Offline-Stabilitäts-Update:
-       - Fix: Wichtige Modal-Buttons (Schließen, Drucken) fest als 
-         Inline-SVGs eingebaut, damit sie offline niemals verschwinden.
-       - Fix: Apple/iPad Druck-Bug behoben! Rezepte werden zum Drucken 
-         nicht mehr im neuen Tab geöffnet (was das Zurückkehren blockierte),
-         sondern dynamisch im selben Fenster verarbeitet (DOM-Swap).
-       - Fix: Verfeinerte Netzwerkprüfung für sofortiges Offline-Laden.
+v1.0 bis v4.2 - PWA, Kategorien, Fuzzy Search, Guided Cooking, Layout-Fixes
+v4.3 - Apple & Offline-Stabilitäts-Update (SVG Icons, SW-Update)
+v4.4 - [AKTUELL] Das ultimative Druck-Update (Mac/iPad):
+       - Fix iPad "Screenshot-Bug": Druck-CSS überschreibt nun konsequent
+         overflow:hidden und flex-Layouts der PWA.
+       - Fix Macbook Fußzeile: @page { margin: 0 !important } blendet 
+         URLs und Datumsangaben des Browsers aus.
+       - Reines CSS-Printing: App wird per CSS (@media print) ein-/ausgeblendet
+         statt per JavaScript (verhindert Rendering-Bugs unter iOS).
 ======================================================================
 -->
 <head>
@@ -64,6 +65,83 @@ v4.3 - [AKTUELL] Das große Apple & Offline-Stabilitäts-Update:
         @keyframes modalFadeIn {
             from { opacity: 0; transform: scale(0.95); }
             to { opacity: 1; transform: scale(1); }
+        }
+
+        /* =======================================================
+           DRUCK-STYLES (Apple Safari / iPad Bugfixes)
+           ======================================================= */
+        
+        /* Der Druck-Container ist in der App unsichtbar */
+        #print-container {
+            display: none;
+        }
+
+        @media print {
+            /* 1. Fußzeilen (URLs/Datum) am Mac/iPad unterdrücken */
+            @page {
+                size: A4 portrait;
+                margin: 0 !important; 
+            }
+
+            /* 2. Apple Screenshot-Bug fixen: Wir zwingen den Body, 
+               seine PWA-Fesseln (overflow, flex) abzulegen! */
+            html, body {
+                height: auto !important;
+                min-height: auto !important;
+                overflow: visible !important; 
+                display: block !important;
+                background: white !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            /* 3. Gesamte normale App beim Drucken restlos ausblenden */
+            body > *:not(#print-container) {
+                display: none !important;
+            }
+
+            /* 4. Unseren sauberen Print-Container einblenden und formatieren */
+            #print-container {
+                display: block !important;
+                padding: 1.5cm 2cm !important; /* Ersetzt den fehlenden Seitenrand aus @page */
+                width: 100% !important;
+                max-width: 100% !important;
+                box-sizing: border-box !important;
+                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+                color: #1f2937 !important;
+                line-height: 1.4 !important;
+            }
+
+            /* Layout Grid */
+            #print-container .content-grid { display: flex !important; flex-direction: row !important; gap: 30px !important; align-items: flex-start !important; }
+            #print-container .ingredients-col { width: 35% !important; flex-shrink: 0 !important; display: block !important; }
+            #print-container .steps-col { width: 65% !important; display: block !important; }
+
+            /* Typografie & Details */
+            #print-container h1 { font-size: 24pt !important; margin: 0 0 5px 0 !important; color: #064e3b !important; }
+            #print-container .meta { color: #4b5563 !important; font-size: 10pt !important; margin-bottom: 20px !important; font-style: italic !important; border-bottom: 2px solid #a8e6cf !important; padding-bottom: 10px !important; }
+            #print-container h2 { font-size: 14pt !important; color: #064e3b !important; margin: 0 0 10px 0 !important; border-bottom: 1px solid #e5e7eb !important; padding-bottom: 5px !important; }
+            #print-container .portions { font-weight: 600 !important; margin-bottom: 10px !important; color: #374151 !important; background: #e8f8f2 !important; padding: 4px 8px !important; border-radius: 5px !important; display: inline-block !important; border: 1px solid #a8e6cf !important; font-size: 10pt !important; }
+
+            /* Listen */
+            #print-container ul.ingredients { list-style-type: none !important; padding: 0 !important; margin: 0 !important; }
+            #print-container ul.ingredients li { padding: 5px 0 !important; border-bottom: 1px solid #e5e7eb !important; display: flex !important; justify-content: flex-start !important; gap: 10px !important; font-size: 10pt !important; }
+            #print-container ul.ingredients li:last-child { border-bottom: none !important; }
+            #print-container .ing-amount { font-weight: 600 !important; color: #111827 !important; text-align: left !important; min-width: 80px !important; flex-shrink: 0 !important; }
+            #print-container .ing-name { color: #4b5563 !important; }
+
+            #print-container ol.steps { padding-left: 0 !important; margin: 0 !important; list-style-type: none !important; counter-reset: step-counter !important; }
+            #print-container ol.steps li { margin-bottom: 12px !important; font-size: 10pt !important; position: relative !important; padding-left: 35px !important; text-align: justify !important; }
+            #print-container ol.steps li::before { content: counter(step-counter) !important; counter-increment: step-counter !important; position: absolute !important; left: 0 !important; top: -2px !important; background: #a8e6cf !important; color: #064e3b !important; font-weight: bold !important; width: 22px !important; height: 22px !important; border-radius: 50% !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 9pt !important; border: 1px solid #2b7a5c !important; }
+
+            /* Extras & Bilder */
+            #print-container .tipp-box { margin-top: 20px !important; padding: 15px !important; background-color: #fef3c7 !important; border-left: 4px solid #f59e0b !important; font-size: 10pt !important; border-radius: 4px !important; color: #92400e !important; }
+            #print-container .recipe-print-img { display: block !important; width: 100% !important; height: auto !important; max-height: 200px !important; object-fit: cover !important; border-radius: 8px !important; margin-bottom: 20px !important; border: 1px solid #e5e7eb !important; }
+
+            /* Seitenumbrüche im Druck verhindern */
+            #print-container ol.steps li, #print-container .tipp-box, #print-container .recipe-print-img, #print-container .ingredients-col { page-break-inside: avoid !important; break-inside: avoid !important; }
         }
     </style>
 </head>
@@ -233,11 +311,11 @@ v4.3 - [AKTUELL] Das große Apple & Offline-Stabilitäts-Update:
 
     <!-- REZEPT-MODAL (Pop-up für Details) -->
     <div id="recipe-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 sm:p-6">
-        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col relative overflow-hidden">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-full sm:max-h-[90vh] flex flex-col relative overflow-hidden">
             
             <div class="bg-pgreen-light p-6 border-b border-pgreen flex justify-between items-start shrink-0 w-full">
                 <div class="min-w-0 pr-4 flex-1">
-                    <h2 id="modal-title" class="text-2xl md:text-3xl font-bold text-gray-800 mb-2 truncate">Rezept Titel</h2>
+                    <h2 id="modal-title" class="text-2xl md:text-3xl font-bold text-gray-800 mb-2 truncate w-full">Rezept Titel</h2>
                     <div class="flex flex-wrap gap-3 text-sm font-medium text-pgreen-dark items-center">
                         <div class="flex items-center gap-1 bg-pgreen/40 px-2 py-1 rounded-lg shrink-0">
                             <i data-lucide="users" class="w-4 h-4 mr-1 shrink-0"></i>
@@ -253,7 +331,6 @@ v4.3 - [AKTUELL] Das große Apple & Offline-Stabilitäts-Update:
                     </div>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
-                    <!-- FIX: Feste SVG Icons für Schließen/Drucken, damit diese Offline NIE verschwinden können -->
                     <button id="print-modal-btn" class="bg-white p-2 rounded-full shadow-sm hover:bg-gray-100 text-gray-500 transition shrink-0 flex items-center justify-center" title="Rezept drucken" aria-label="Drucken">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 shrink-0"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect width="12" height="8" x="6" y="14"></rect></svg>
                     </button>
@@ -367,12 +444,8 @@ v4.3 - [AKTUELL] Das große Apple & Offline-Stabilitäts-Update:
     </div>
 
     <script>
-        // Icons initialisieren
         if (typeof lucide !== 'undefined') lucide.createIcons();
 
-        // ---------------------------------------------------------
-        // DEBOUNCING & FUZZY SEARCH
-        // ---------------------------------------------------------
         function debounce(func, wait) {
             let timeout;
             return function(...args) {
@@ -411,9 +484,6 @@ v4.3 - [AKTUELL] Das große Apple & Offline-Stabilitäts-Update:
             return false;
         }
 
-        // ---------------------------------------------------------
-        // HILFSFUNKTIONEN
-        // ---------------------------------------------------------
         function formatTimeInText(text) {
             return text.replace(/(\d+(?:,\d+)?\s*(?:Min\.|Minuten|min|Stunde|Stunden|h\b))/gi, '<strong>$1</strong>');
         }
@@ -464,9 +534,6 @@ v4.3 - [AKTUELL] Das große Apple & Offline-Stabilitäts-Update:
             return u;
         }
 
-        // ---------------------------------------------------------
-        // OFFLINE STEUERUNG & GLOBALE VARIABLEN
-        // ---------------------------------------------------------
         function updateOnlineStatus() {
             const badge = document.getElementById('offline-badge');
             if (navigator.onLine) badge.classList.add('hidden');
@@ -484,11 +551,7 @@ v4.3 - [AKTUELL] Das große Apple & Offline-Stabilitäts-Update:
         const CACHE_KEY = 'schulkueche_rezepte_v1';
         const baseIngredientsNames = ['öl', 'salz', 'pfeffer', 'wasser', 'oel', 'salz & pfeffer', 'meersalz', 'olivenöl', 'sonnenblumenöl', 'rapsöl'];
 
-        // ---------------------------------------------------------
-        // DATEN LADEN & PARSEN
-        // ---------------------------------------------------------
         document.addEventListener('DOMContentLoaded', () => {
-            // FIX: Strikte Abfrage! Ist WLAN aus, lade SOFORT aus dem Cache.
             if (!navigator.onLine) {
                 console.log("Gerät ist offline. Lade Daten direkt aus dem Cache...");
                 loadFromCache();
@@ -500,7 +563,6 @@ v4.3 - [AKTUELL] Das große Apple & Offline-Stabilitäts-Update:
         function fetchDataFromNetwork() {
             const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS47FKbfUVbg0YLTW2FZFIsHhCyKG6jOK4Ve1vz8yo3dglBLC_xWWzTz9eQCKQ2Mm1ePqnV0VPkSTXf/pub?output=csv&_t=' + new Date().getTime();
             
-            // FIX: 5 Sekunden Timeout! Hängt das Schul-WLAN, blockiert die App nicht ewig.
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 5000); 
             
@@ -512,7 +574,7 @@ v4.3 - [AKTUELL] Das große Apple & Offline-Stabilitäts-Update:
                 })
                 .then(csvText => {
                     try {
-                        try { localStorage.setItem(CACHE_KEY, csvText); } catch (e) {}
+                        try { localStorage.setItem(CACHE_KEY, csvText); } catch (e) { console.warn("Offline-Speichern blockiert."); }
                         processCSV(csvText);
                         initAppSuccess();
                     } catch (err) { showError("Datenstruktur konnte nicht verarbeitet werden."); }
@@ -634,11 +696,14 @@ v4.3 - [AKTUELL] Das große Apple & Offline-Stabilitäts-Update:
             allIngredients = Array.from(ingredientsSet).sort((a, b) => a.localeCompare(b, 'de'));
         }
 
-        // ---------------------------------------------------------
-        // UI & FILTER LOGIK
-        // ---------------------------------------------------------
         function renderCategories() {
-            const cats = [...new Set(recipes.map(r => r.category).filter(c => c !== ''))].sort();
+            // FIXE KATEGORIEN: Nur diese anzeigen, in genau dieser Reihenfolge.
+            const predefinedCats = ["Suppe", "Salat", "Pasta", "Hauptgericht", "Bowl", "Dessert", "Backen"];
+            
+            // Checken, welche der festen Kategorien in den aktuellen Rezepten existieren
+            const availableCats = new Set(recipes.map(r => r.category));
+            const cats = predefinedCats.filter(cat => availableCats.has(cat));
+
             if (cats.length === 0) return;
             
             const list = document.getElementById('category-list');
@@ -1101,17 +1166,20 @@ v4.3 - [AKTUELL] Das große Apple & Offline-Stabilitäts-Update:
         }
 
         // ---------------------------------------------------------
-        // DRUCK-FUNKTION (PWA & SAFARI SAFE)
+        // DRUCK-FUNKTION (PWA REINES CSS)
         // ---------------------------------------------------------
         document.getElementById('print-modal-btn').addEventListener('click', printRecipe);
 
         function printRecipe() {
             if (!currentOpenRecipe) return;
 
-            // FIX: Um Apple's "Neuer Tab"-Bug zu umgehen, kopieren wir den Inhalt in ein lokales Druck-Fenster.
+            // Alten Container entfernen falls vorhanden
+            const oldContainer = document.getElementById('print-container');
+            if(oldContainer) oldContainer.remove();
+
             let imageHTML = '';
             const finalPrintImageUrl = getWorkingImageUrl(currentOpenRecipe.imageUrl);
-            if (finalPrintImageUrl !== '') {
+            if (finalPrintImageUrl !== '' && navigator.onLine) {
                 imageHTML = `<img src="${finalPrintImageUrl}" alt="Rezeptbild" class="recipe-print-img" onerror="this.style.display='none'">`;
             }
 
@@ -1148,33 +1216,6 @@ v4.3 - [AKTUELL] Das große Apple & Offline-Stabilitäts-Update:
             if (currentOpenRecipe.note) metaTags.push(`Hinweis: ${currentOpenRecipe.note}`);
 
             const htmlContent = `
-                <style>
-                    #print-area { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1f2937; line-height: 1.4; background: white; width: 100%; box-sizing: border-box; }
-                    #print-area h1 { font-size: 24pt; margin-bottom: 5px; color: #064e3b; margin-top: 0; }
-                    #print-area .meta { color: #4b5563; font-size: 10pt; margin-bottom: 20px; font-style: italic; border-bottom: 2px solid #a8e6cf; padding-bottom: 10px; }
-                    #print-area .recipe-print-img { display: block; width: 100%; height: auto; max-height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e5e7eb; }
-                    #print-area h2 { font-size: 14pt; color: #064e3b; margin-top: 0; margin-bottom: 10px; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; }
-                    #print-area .portions { font-weight: 600; margin-bottom: 10px; color: #374151; background: #e8f8f2; padding: 4px 8px; border-radius: 5px; display: inline-block; border: 1px solid #a8e6cf; font-size: 10pt; }
-                    #print-area ul.ingredients { list-style-type: none; padding: 0; margin: 0; }
-                    #print-area ul.ingredients li { padding: 5px 0; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: flex-start; gap: 10px; font-size: 10pt; }
-                    #print-area ul.ingredients li:last-child { border-bottom: none; }
-                    #print-area .ing-amount { font-weight: 600; color: #111827; text-align: left; min-width: 80px; flex-shrink: 0; }
-                    #print-area .ing-name { color: #4b5563; }
-                    #print-area ol.steps { padding-left: 0; margin: 0; list-style-type: none; counter-reset: step-counter; }
-                    #print-area ol.steps li { margin-bottom: 12px; font-size: 10pt; position: relative; padding-left: 35px; text-align: justify; }
-                    #print-area ol.steps li::before { content: counter(step-counter); counter-increment: step-counter; position: absolute; left: 0; top: -2px; background: #a8e6cf; color: #064e3b; font-weight: bold; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9pt; border: 1px solid #2b7a5c; }
-                    #print-area .tipp-box { margin-top: 20px; padding: 15px; background-color: #fef3c7; border-left: 4px solid #f59e0b; font-size: 10pt; border-radius: 4px; color: #92400e; }
-                    
-                    @media print {
-                        @page { size: A4 portrait; margin: 0; } 
-                        body { margin: 0; padding: 0; background: white; }
-                        #print-area { padding: 1.5cm 2cm !important; width: 100%; max-width: 100%; box-sizing: border-box; } 
-                        #print-area .content-grid { display: flex !important; flex-direction: row !important; gap: 30px; }
-                        #print-area .ingredients-col { width: 35% !important; display: block !important; }
-                        #print-area .steps-col { width: 65% !important; display: block !important; }
-                        #print-area ol.steps li, #print-area .tipp-box, #print-area .recipe-print-img { page-break-inside: avoid; }
-                    }
-                </style>
                 <h1>${currentOpenRecipe.title}</h1>
                 <div class="meta">${metaTags.join(' &nbsp;|&nbsp; ')}</div>
                 <div class="content-grid">
@@ -1184,24 +1225,19 @@ v4.3 - [AKTUELL] Das große Apple & Offline-Stabilitäts-Update:
             `;
 
             const printArea = document.createElement('div');
-            printArea.id = 'print-area';
+            printArea.id = 'print-container';
             printArea.innerHTML = htmlContent;
             document.body.appendChild(printArea);
 
-            // Verstecke die eigentliche App, um NUR den print-area zu drucken
-            const originalChildren = Array.from(document.body.children).filter(child => child.id !== 'print-area' && child.tagName !== 'SCRIPT' && child.tagName !== 'STYLE');
-            const originalStyles = originalChildren.map(child => child.style.display);
-            
-            originalChildren.forEach(child => child.style.display = 'none');
-
-            // Timeout gibt Browsern Zeit, die Bilder kurz in den Speicher zu laden
+            // Timeout hilft Safari (iPad/Mac) die Bilder zu laden bevor der Druck-Dialog feuert
             setTimeout(() => {
                 window.print();
-                
-                // Stelle die App exakt so wieder her, wie sie war (inklusive offener Tabs!)
-                originalChildren.forEach((child, index) => child.style.display = originalStyles[index]);
-                document.body.removeChild(printArea);
-            }, 400);
+                // Nach dem Druckvorgang den Container wieder löschen
+                setTimeout(() => {
+                    const cleanup = document.getElementById('print-container');
+                    if(cleanup) cleanup.remove();
+                }, 1000);
+            }, 250);
         }
 
         // ---------------------------------------------------------
@@ -1245,7 +1281,7 @@ v4.3 - [AKTUELL] Das große Apple & Offline-Stabilitäts-Update:
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => { 
                 navigator.serviceWorker.register('./sw.js').then(reg => {
-                    reg.update(); // Zwingt den Browser nach der neuen index.html und sw.js zu suchen!
+                    reg.update(); 
                 }).catch(() => {}); 
             });
         }
