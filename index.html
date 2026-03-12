@@ -7,14 +7,8 @@ VERSIONSVERLAUF (Version History)
 v1.0 bis v3.2 - Aufbau, Live-Daten, Offline-Storage, Pastell-Design, PWA
 v3.3 - Feature Update (10 Schritte + Druckfunktion)
 v3.4 - Hotfix Update (Parse-Error, Lucide Fallbacks)
-v3.5 - [AKTUELL] Usability & Print Update:
-       - PDF: Kopf-/Fußzeilen ausgeblendet (@page margin: 0)
-       - PDF: Zutaten-Layout gedreht (Menge links, Name rechts)
-       - Feature: "Tipp"-Spalte integriert (UI & Print)
-       - Feature: Auto-Fettung von Zeitangaben in den Schritten
-       - Feature: Schwierigkeitsgrade durch 1-4 Sterne ersetzt
-       - UI-Fix: "Keine Ergebnisse"-Box verkleinert & Logik-Bug behoben
-       - Matching: Toleranz auf 3 fehlende Zutaten angehoben
+v3.5 - Usability & Print Update (PDF Optimierung, Tipp-Feld, Sterne)
+v3.6 - [AKTUELL] Print Update: Rezeptbild in den PDF-Ausdruck integriert
 ======================================================================
 -->
 <head>
@@ -272,6 +266,10 @@ v3.5 - [AKTUELL] Usability & Print Update:
 
             <!-- Modal Content (Scrollbar) -->
             <div class="p-6 overflow-y-auto no-scrollbar flex-1 bg-white min-h-0">
+                
+                <!-- Rezept-Bild (wird nur geladen, wenn online & Link vorhanden) -->
+                <img id="modal-image" src="" alt="Rezeptbild" class="w-full h-48 md:h-64 object-cover rounded-2xl mb-8 hidden shadow-sm border border-gray-100">
+
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                     
                     <!-- Zutatenliste -->
@@ -574,6 +572,7 @@ v3.5 - [AKTUELL] Usability & Print Update:
                     technique: rowData['Haupttechnik'] || '',
                     note: rowData['Hinweis'] || '',
                     tipp: rowData['Tipp'] || '', // NEUE SPALTE AUSGELESEN
+                    imageUrl: rowData['Zielangabe'] || '', // NEUE SPALTE FÜR BILDER
                     portions: rowData['Portionen'] || '4',
                     displayIngredients: [], 
                     searchableIngredients: [],
@@ -947,6 +946,21 @@ v3.5 - [AKTUELL] Usability & Print Update:
                 noteEl.classList.add('hidden');
             }
 
+            // Bild-Logik (Nur laden, wenn Link vorhanden UND online)
+            const modalImg = document.getElementById('modal-image');
+            if (recipe.imageUrl && recipe.imageUrl.trim() !== '' && navigator.onLine) {
+                modalImg.src = recipe.imageUrl.trim();
+                modalImg.classList.remove('hidden');
+                
+                // Falls das Bild (z.B. wegen falschem Link) nicht geladen werden kann -> sofort verstecken
+                modalImg.onerror = function() {
+                    this.classList.add('hidden');
+                };
+            } else {
+                modalImg.classList.add('hidden');
+                modalImg.src = ''; // Quelle leeren, damit kein altes Bild stehen bleibt
+            }
+
             renderModalIngredients();
 
             const stepList = document.getElementById('modal-steps');
@@ -1002,6 +1016,13 @@ v3.5 - [AKTUELL] Usability & Print Update:
             if (!printWindow) {
                 alert("Bitte erlaube Pop-ups in deinem Browser, um das Rezept zu drucken.");
                 return;
+            }
+
+            // Bild generieren (Falls ein Link hinterlegt ist)
+            let imageHTML = '';
+            if (currentOpenRecipe.imageUrl && currentOpenRecipe.imageUrl.trim() !== '') {
+                // onerror verhindert kaputte Bild-Icons im Druck, falls das Gerät beim Drucken gerade offline ist
+                imageHTML = `<img src="${currentOpenRecipe.imageUrl.trim()}" alt="Rezeptbild" class="recipe-print-img" onerror="this.style.display='none'">`;
             }
 
             // Zutaten generieren (Menge LINKS, Name RECHTS für den Ausdruck)
@@ -1069,6 +1090,9 @@ v3.5 - [AKTUELL] Usability & Print Update:
                         .ingredients-col { width: 35%; flex-shrink: 0; }
                         .steps-col { width: 65%; }
                         
+                        /* Bild für den Druck (eingebunden in die linke Spalte) */
+                        .recipe-print-img { display: block; width: 100%; height: auto; max-height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e5e7eb; }
+                        
                         h2 { font-size: 14pt; color: #064e3b; margin-top: 0; margin-bottom: 10px; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; }
                         .portions { font-weight: 600; margin-bottom: 10px; color: #374151; background: #e8f8f2; padding: 4px 8px; border-radius: 5px; display: inline-block; border: 1px solid #a8e6cf; font-size: 10pt; }
                         
@@ -1100,7 +1124,7 @@ v3.5 - [AKTUELL] Usability & Print Update:
                             .steps-col { width: 65% !important; display: block !important; }
                             
                             /* Verhindere das zerschneiden von Schritten auf 2 Seiten */
-                            ol.steps li, .tipp-box { page-break-inside: avoid; }
+                            ol.steps li, .tipp-box, .recipe-print-img { page-break-inside: avoid; }
                         }
                     </style>
                 </head>
@@ -1110,6 +1134,7 @@ v3.5 - [AKTUELL] Usability & Print Update:
                     
                     <div class="content-grid">
                         <div class="ingredients-col">
+                            ${imageHTML}
                             <h2>Zutaten</h2>
                             <div class="portions">Für ${currentPortions} Personen</div>
                             <ul class="ingredients">
