@@ -405,6 +405,20 @@ v3.6 - [AKTUELL] Print Update: Rezeptbild in den PDF-Ausdruck integriert
             return `<div class="flex items-center gap-0.5" title="${diff}">${stars}</div>`;
         }
 
+        function getWorkingImageUrl(url) {
+            if (!url) return '';
+            let u = url.trim();
+            // Automatische Erkennung und Umwandlung von Google Drive Links
+            if (u.includes('drive.google.com')) {
+                let match = u.match(/id=([a-zA-Z0-9_-]+)/) || u.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                if (match && match[1]) {
+                    // Nutzt Googles stabilen Content-Server (umgeht Weiterleitungen und Sandbox-Sperren)
+                    return 'https://lh3.googleusercontent.com/d/' + match[1];
+                }
+            }
+            return u;
+        }
+
 
         // ---------------------------------------------------------
         // OFFLINE ANZEIGE STEUERUNG
@@ -572,7 +586,8 @@ v3.6 - [AKTUELL] Print Update: Rezeptbild in den PDF-Ausdruck integriert
                     technique: rowData['Haupttechnik'] || '',
                     note: rowData['Hinweis'] || '',
                     tipp: rowData['Tipp'] || '', // NEUE SPALTE AUSGELESEN
-                    imageUrl: rowData['Zielangabe'] || '', // NEUE SPALTE FÜR BILDER
+                    // Sucht jetzt nach großem Z oder kleinem z in der Tabelle!
+                    imageUrl: rowData['Zielangabe'] || rowData['zielangabe'] || '', 
                     portions: rowData['Portionen'] || '4',
                     displayIngredients: [], 
                     searchableIngredients: [],
@@ -948,8 +963,10 @@ v3.6 - [AKTUELL] Print Update: Rezeptbild in den PDF-Ausdruck integriert
 
             // Bild-Logik (Nur laden, wenn Link vorhanden UND online)
             const modalImg = document.getElementById('modal-image');
-            if (recipe.imageUrl && recipe.imageUrl.trim() !== '' && navigator.onLine) {
-                modalImg.src = recipe.imageUrl.trim();
+            const finalImageUrl = getWorkingImageUrl(recipe.imageUrl);
+            
+            if (finalImageUrl !== '' && navigator.onLine) {
+                modalImg.src = finalImageUrl;
                 modalImg.classList.remove('hidden');
                 
                 // Falls das Bild (z.B. wegen falschem Link) nicht geladen werden kann -> sofort verstecken
@@ -1020,9 +1037,10 @@ v3.6 - [AKTUELL] Print Update: Rezeptbild in den PDF-Ausdruck integriert
 
             // Bild generieren (Falls ein Link hinterlegt ist)
             let imageHTML = '';
-            if (currentOpenRecipe.imageUrl && currentOpenRecipe.imageUrl.trim() !== '') {
+            const finalPrintImageUrl = getWorkingImageUrl(currentOpenRecipe.imageUrl);
+            if (finalPrintImageUrl !== '') {
                 // onerror verhindert kaputte Bild-Icons im Druck, falls das Gerät beim Drucken gerade offline ist
-                imageHTML = `<img src="${currentOpenRecipe.imageUrl.trim()}" alt="Rezeptbild" class="recipe-print-img" onerror="this.style.display='none'">`;
+                imageHTML = `<img src="${finalPrintImageUrl}" alt="Rezeptbild" class="recipe-print-img" onerror="this.style.display='none'">`;
             }
 
             // Zutaten generieren (Menge LINKS, Name RECHTS für den Ausdruck)
