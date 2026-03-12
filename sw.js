@@ -1,60 +1,71 @@
-const CACHE_NAME = 'rezeptfinder-v4';
+// ==========================================================
+// Service Worker für den Schulküchen-Rezeptfinder
+// ==========================================================
 
-// Hier tragen wir alle Dateien ein, die für den Offline-Start zwingend auf dem Gerät liegen müssen
-const ASSETS_TO_CACHE = [
+// WICHTIG: Wenn du in Zukunft die index.html änderst, 
+// musst du hier einfach die Versionsnummer (z.B. auf v5.0) ändern.
+// Das zwingt die Tablets, das Update herunterzuladen!
+const CACHE_NAME = 'schulkueche-cache-v4.2';
+
+// Diese lokalen Dateien werden beim ersten Start für den Offline-Modus gespeichert
+const urlsToCache = [
     './',
-    './index.html', // oder rezept_finder.html (je nachdem wie deine HTML Datei wirklich heißt)
+    './index.html',
+    './manifest.json',
     './Logo_Schulamt_Dachau.png',
     './logo_bdb.png',
     './AppEdge.png',
     './AppSafari.jpg'
 ];
 
-// Installation des Service Workers
+// INSTALLATION: Speichert die Dateien im Cache
 self.addEventListener('install', event => {
-    self.skipWaiting();
     event.waitUntil(
         caches.open(CACHE_NAME)
-        .then(cache => cache.addAll(ASSETS_TO_CACHE))
-        .catch(err => console.log('Cache fehlgeschlagen', err))
+            .then(cache => {
+                console.log('Cache geöffnet');
+                return cache.addAll(urlsToCache);
+            })
     );
+    // Zwingt den neuen Service Worker, sofort aktiv zu werden (wartet nicht auf Neustart)
+    self.skipWaiting();
 });
 
-// Aktivierung
+// AKTIVIERUNG: Löscht alte, nicht mehr benötigte Caches (z.B. v4.1)
 self.addEventListener('activate', event => {
-    event.waitUntil(clients.claim());
+    event.waitUntil(
+        caches.keys().then(cacheNames => {
+            return Promise.all(
+                cacheNames.map(cacheName => {
+                    if (cacheName !== CACHE_NAME) {
+                        console.log('Alter Cache wird gelöscht:', cacheName);
+                        return caches.delete(cacheName);
+                    }
+                })
+            );
+        })
+    );
+    // Übernimmt sofort die Kontrolle über alle offenen Tabs der App
+    return self.clients.claim();
 });
 
-// Anfragen abfangen (Offline-Fähigkeit sicherstellen)
+// FETCH: Fängt Netzwerkanfragen ab (Offline-Fähigkeit)
 self.addEventListener('fetch', event => {
-    // Nur GET-Anfragen (Downloads) bearbeiten
-    if (event.request.method !== 'GET') return;
-    
-    // Den Besucherzähler bewusst nicht speichern (macht keinen Sinn offline)
-    if (event.request.url.includes('hits.sh')) return;
+    // Ignoriere Anfragen an fremde Server (wie Google Sheets oder Google Drive Bilder),
+    // da diese von unserer index.html selbst offline verwaltet werden.
+    if (!event.request.url.startsWith(self.location.origin)) {
+        return;
+    }
 
     event.respondWith(
-        fetch(event.request).then(response => {
-            // Wenn das Internet klappt: Lade die aktuelle Datei und lege eine Kopie in den Cache
-            if (response.status === 200 && (response.type === 'basic' || response.type === 'cors')) {
-                const responseToCache = response.clone();
-                caches.open(CACHE_NAME).then(cache => {
-                    // Google Sheets Parameter "säubern", um den korrekten Link zu merken
-                    let cacheKey = event.request;
-                    if(event.request.url.includes('docs.google.com')) {
-                        cacheKey = new Request(event.request.url.split('&_t=')[0]);
-                    }
-                    cache.put(cacheKey, responseToCache);
-                });
-            }
-            return response;
-        }).catch(() => {
-            // WENN KEIN INTERNET: Suche die Datei im lokalen Cache
-            let cacheKey = event.request;
-            if(event.request.url.includes('docs.google.com')) {
-                cacheKey = new Request(event.request.url.split('&_t=')[0]);
-            }
-            return caches.match(cacheKey);
-        })
+        caches.match(event.request)
+            .then(response => {
+                // Wenn die Datei im Cache gefunden wird (z.B. index.html oder Logos), gib sie zurück
+                if (response) {
+                    return response;
+                }
+                // Ansonsten lade sie ganz normal aus dem Internet
+                return fetch(event.request);
+            })
     );
 });
