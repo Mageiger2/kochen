@@ -2,12 +2,9 @@
 // Service Worker für den Schulküchen-Rezeptfinder
 // ==========================================================
 
-// WICHTIG: Wenn du in Zukunft die index.html änderst, 
-// musst du hier einfach die Versionsnummer (z.B. auf v5.0) ändern.
-// Das zwingt die Tablets, das Update herunterzuladen!
-const CACHE_NAME = 'schulkueche-cache-v4.2';
+const CACHE_NAME = 'schulkueche-cache-v4.3'; // NEU: Zwingt alle Geräte zum Update
 
-// Diese lokalen Dateien werden beim ersten Start für den Offline-Modus gespeichert
+// Diese Dateien werden beim ersten Start gesichert
 const urlsToCache = [
     './',
     './index.html',
@@ -15,57 +12,75 @@ const urlsToCache = [
     './Logo_Schulamt_Dachau.png',
     './logo_bdb.png',
     './AppEdge.png',
-    './AppSafari.jpg'
+    './AppSafari.jpg',
+    // Mac/iPad Fix: Wir sichern auch die genutzten Frameworks!
+    'https://cdn.tailwindcss.com',
+    'https://unpkg.com/lucide@0.344.0/dist/umd/lucide.min.js'
 ];
 
-// INSTALLATION: Speichert die Dateien im Cache
+// INSTALLATION: Lädt Dateien einzeln in den Cache
 self.addEventListener('install', event => {
     event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then(cache => {
-                console.log('Cache geöffnet');
-                return cache.addAll(urlsToCache);
-            })
+        caches.open(CACHE_NAME).then(cache => {
+            console.log('Cache v4.3 geöffnet');
+            // Nutzt allSettled statt all, damit Safari nicht abstürzt, 
+            // falls das externe Tailwind mal eine Millisekunde zu lange braucht.
+            return Promise.allSettled(
+                urlsToCache.map(url => {
+                    return fetch(url).then(response => {
+                        if (response.ok) {
+                            return cache.put(url, response);
+                        }
+                    }).catch(err => console.log('Offline-Speicher übersprungen für:', url));
+                })
+            );
+        })
     );
-    // Zwingt den neuen Service Worker, sofort aktiv zu werden (wartet nicht auf Neustart)
     self.skipWaiting();
 });
 
-// AKTIVIERUNG: Löscht alte, nicht mehr benötigte Caches (z.B. v4.1)
+// AKTIVIERUNG: Löscht alten Müll (z.B. v4.2 oder älter)
 self.addEventListener('activate', event => {
     event.waitUntil(
         caches.keys().then(cacheNames => {
             return Promise.all(
                 cacheNames.map(cacheName => {
                     if (cacheName !== CACHE_NAME) {
-                        console.log('Alter Cache wird gelöscht:', cacheName);
                         return caches.delete(cacheName);
                     }
                 })
             );
         })
     );
-    // Übernimmt sofort die Kontrolle über alle offenen Tabs der App
     return self.clients.claim();
 });
 
-// FETCH: Fängt Netzwerkanfragen ab (Offline-Fähigkeit)
+// FETCH: Liefert den Cache aus, wenn man offline ist
 self.addEventListener('fetch', event => {
-    // Ignoriere Anfragen an fremde Server (wie Google Sheets oder Google Drive Bilder),
-    // da diese von unserer index.html selbst offline verwaltet werden.
-    if (!event.request.url.startsWith(self.location.origin)) {
-        return;
+    const url = event.request.url;
+
+    // Google-Datenbank und Bilder NIEMALS aus dem Hintergrund-Cache laden!
+    if (url.includes('docs.google.com') || url.includes('lh3.googleusercontent.com')) {
+        return; 
     }
 
     event.respondWith(
-        caches.match(event.request)
-            .then(response => {
-                // Wenn die Datei im Cache gefunden wird (z.B. index.html oder Logos), gib sie zurück
-                if (response) {
-                    return response;
+        caches.match(event.request).then(response => {
+            if (response) {
+                return response; // Gefunden -> Sofort ausliefern
+            }
+            return fetch(event.request).then(networkResponse => {
+                // Dynamisches Sichern für die Zukunft
+                if (networkResponse && networkResponse.status === 200 && (networkResponse.type === 'basic' || networkResponse.type === 'cors')) {
+                    const responseToCache = networkResponse.clone();
+                    caches.open(CACHE_NAME).then(cache => {
+                        cache.put(event.request, responseToCache);
+                    });
                 }
-                // Ansonsten lade sie ganz normal aus dem Internet
-                return fetch(event.request);
-            })
+                return networkResponse;
+            }).catch(() => {
+                // Fehler ignorieren, wenn komplett offline
+            });
+        })
     );
 });
