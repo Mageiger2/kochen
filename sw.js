@@ -1,11 +1,14 @@
-// ==========================================================
-// Service Worker für den Schulküchen-Rezeptfinder
-// ==========================================================
+// ==========================================
+// SCHULKÜCHEN REZEPT-FINDER - SERVICE WORKER
+// Version: 4.5 (Grundrezepte-Update)
+// ==========================================
 
-const CACHE_NAME = 'schulkueche-cache-v4.3'; // NEU: Zwingt alle Geräte zum Update
+const CACHE_NAME = 'rezept-app-cache-v4.5';
 
-// Diese Dateien werden beim ersten Start gesichert
-const urlsToCache = [
+// Alle Dateien, die für das Design und die Offline-App nötig sind.
+// HINWEIS: Die Rezept-Daten (CSV) werden absichtlich nicht hier, 
+// sondern dynamisch in der index.html (im localStorage) gespeichert!
+const URLS_TO_CACHE = [
     './',
     './index.html',
     './manifest.json',
@@ -13,74 +16,57 @@ const urlsToCache = [
     './logo_bdb.png',
     './AppEdge.png',
     './AppSafari.jpg',
-    // Mac/iPad Fix: Wir sichern auch die genutzten Frameworks!
-    'https://cdn.tailwindcss.com',
-    'https://unpkg.com/lucide@0.344.0/dist/umd/lucide.min.js'
+    './icon-192.png',
+    './icon-512.png'
 ];
 
-// INSTALLATION: Lädt Dateien einzeln in den Cache
-self.addEventListener('install', event => {
+// 1. INSTALLATION: Lade alle wichtigen Dateien in den Offline-Speicher
+self.addEventListener('install', (event) => {
     event.waitUntil(
-        caches.open(CACHE_NAME).then(cache => {
-            console.log('Cache v4.3 geöffnet');
-            // Nutzt allSettled statt all, damit Safari nicht abstürzt, 
-            // falls das externe Tailwind mal eine Millisekunde zu lange braucht.
-            return Promise.allSettled(
-                urlsToCache.map(url => {
-                    return fetch(url).then(response => {
-                        if (response.ok) {
-                            return cache.put(url, response);
-                        }
-                    }).catch(err => console.log('Offline-Speicher übersprungen für:', url));
-                })
-            );
-        })
+        caches.open(CACHE_NAME)
+            .then((cache) => {
+                console.log('[Service Worker] Caching App Shell');
+                return cache.addAll(URLS_TO_CACHE);
+            })
+            .then(() => self.skipWaiting())
     );
-    self.skipWaiting();
 });
 
-// AKTIVIERUNG: Löscht alten Müll (z.B. v4.2 oder älter)
-self.addEventListener('activate', event => {
+// 2. AKTIVIERUNG: Lösche alte App-Versionen von den Tablets/PCs
+self.addEventListener('activate', (event) => {
     event.waitUntil(
-        caches.keys().then(cacheNames => {
+        caches.keys().then((cacheNames) => {
             return Promise.all(
-                cacheNames.map(cacheName => {
+                cacheNames.map((cacheName) => {
                     if (cacheName !== CACHE_NAME) {
+                        console.log('[Service Worker] Lösche alten Cache:', cacheName);
                         return caches.delete(cacheName);
                     }
                 })
             );
-        })
+        }).then(() => self.clients.claim())
     );
-    return self.clients.claim();
 });
 
-// FETCH: Liefert den Cache aus, wenn man offline ist
-self.addEventListener('fetch', event => {
-    const url = event.request.url;
-
-    // Google-Datenbank und Bilder NIEMALS aus dem Hintergrund-Cache laden!
-    if (url.includes('docs.google.com') || url.includes('lh3.googleusercontent.com')) {
-        return; 
+// 3. OFFLINE-BETRIEB: Fange Anfragen ab
+self.addEventListener('fetch', (event) => {
+    // Ignoriere die Google Docs CSV-Anfrage (die regelt die index.html selbst)
+    if (event.request.url.includes('docs.google.com') || event.request.url.includes('hits.sh')) {
+        return;
     }
 
     event.respondWith(
-        caches.match(event.request).then(response => {
-            if (response) {
-                return response; // Gefunden -> Sofort ausliefern
-            }
-            return fetch(event.request).then(networkResponse => {
-                // Dynamisches Sichern für die Zukunft
-                if (networkResponse && networkResponse.status === 200 && (networkResponse.type === 'basic' || networkResponse.type === 'cors')) {
-                    const responseToCache = networkResponse.clone();
-                    caches.open(CACHE_NAME).then(cache => {
-                        cache.put(event.request, responseToCache);
-                    });
+        caches.match(event.request)
+            .then((response) => {
+                // Wenn die Datei im Offline-Speicher ist, nimm diese
+                if (response) {
+                    return response;
                 }
-                return networkResponse;
-            }).catch(() => {
-                // Fehler ignorieren, wenn komplett offline
-            });
-        })
+                // Ansonsten versuche sie aus dem Internet zu laden
+                return fetch(event.request).catch(() => {
+                    // Fallback, falls man offline ist und die Datei fehlt
+                    console.warn('[Service Worker] Ressource offline nicht verfügbar:', event.request.url);
+                });
+            })
     );
 });
