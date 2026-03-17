@@ -4,15 +4,17 @@
 ======================================================================
 VERSIONSVERLAUF (Version History)
 ======================================================================
-v1.0 bis v4.2 - PWA, Kategorien, Fuzzy Search, Guided Cooking, Layout-Fixes
-v4.3 - Apple & Offline-Stabilitäts-Update (SVG Icons, SW-Update)
-v4.4 - [AKTUELL] Das ultimative Druck-Update (Mac/iPad):
-       - Fix iPad "Screenshot-Bug": Druck-CSS überschreibt nun konsequent
-         overflow:hidden und flex-Layouts der PWA.
-       - Fix Macbook Fußzeile: @page { margin: 0 !important } blendet 
-         URLs und Datumsangaben des Browsers aus.
-       - Reines CSS-Printing: App wird per CSS (@media print) ein-/ausgeblendet
-         statt per JavaScript (verhindert Rendering-Bugs unter iOS).
+v1.0 bis v4.4 - PWA, PWA-Fixes für Apple/Windows, Print-CSS, Offline-Safe
+v4.5 - [AKTUELL] Das große Grundrezept-Update:
+       - Feste Kategorien-Reihenfolge integriert.
+       - CSV-Parser liest Grundrezept_01 und Grundrezept_02 aus.
+       - Zutaten von Grundrezepten werden im Pop-Up automatisch ergänzt
+         (inklusive synchroner Portionen-Skalierung).
+       - Zubereitungsschritte von Grundrezepten werden als aufklappbare
+         Akkordeons unter dem Hauptrezept angezeigt.
+       - Im Vollbild-Modus (Guided Cooking) werden die Schritte beider 
+         Rezepte nahtlos zum Durchwischen hintereinander gehängt.
+       - Beim Drucken klappen die Grundrezepte automatisch vollständig auf.
 ======================================================================
 -->
 <head>
@@ -443,6 +445,9 @@ v4.4 - [AKTUELL] Das ultimative Druck-Update (Mac/iPad):
         </div>
     </div>
 
+    <!-- ========================================================== -->
+    <!-- JAVASCRIPT LOGIK                                           -->
+    <!-- ========================================================== -->
     <script>
         if (typeof lucide !== 'undefined') lucide.createIcons();
 
@@ -662,6 +667,7 @@ v4.4 - [AKTUELL] Das ultimative Druck-Update (Mac/iPad):
                 headers.forEach((h, idx) => rowData[h] = currentLine[idx] || '');
                 if (!rowData['Rezept'] || rowData['Rezept'].trim() === '') continue;
 
+                // NEU: Grundrezepte aus der CSV parsen
                 let rObj = {
                     title: rowData['Rezept'].trim(),
                     category: rowData['Kategorie'] ? rowData['Kategorie'].trim() : '',
@@ -672,7 +678,11 @@ v4.4 - [AKTUELL] Das ultimative Druck-Update (Mac/iPad):
                     tipp: rowData['Tipp'] || '',
                     imageUrl: rowData['Zielangabe'] || rowData['zielangabe'] || '',
                     portions: rowData['Portionen'] || '4',
-                    displayIngredients: [], searchableIngredients: [], steps: []
+                    baseRecipe1: rowData['Grundrezept_01'] ? rowData['Grundrezept_01'].trim() : '',
+                    baseRecipe2: rowData['Grundrezept_02'] ? rowData['Grundrezept_02'].trim() : '',
+                    displayIngredients: [], 
+                    searchableIngredients: [], 
+                    steps: []
                 };
 
                 for (let j = 1; j <= 8; j++) {
@@ -696,6 +706,9 @@ v4.4 - [AKTUELL] Das ultimative Druck-Update (Mac/iPad):
             allIngredients = Array.from(ingredientsSet).sort((a, b) => a.localeCompare(b, 'de'));
         }
 
+        // ---------------------------------------------------------
+        // KATEGORIEN & SUCHE
+        // ---------------------------------------------------------
         function renderCategories() {
             // FIXE KATEGORIEN: Nur diese anzeigen, in genau dieser Reihenfolge.
             const predefinedCats = ["Suppe", "Salat", "Pasta", "Hauptgericht", "Bowl", "Dessert", "Backen"];
@@ -991,11 +1004,12 @@ v4.4 - [AKTUELL] Das ultimative Druck-Update (Mac/iPad):
         }
 
         // ---------------------------------------------------------
-        // REZEPT-MODAL LOGIK
+        // REZEPT-MODAL & GRUNDREZEPT LOGIK
         // ---------------------------------------------------------
         const modal = document.getElementById('recipe-modal');
         const closeBtn = document.getElementById('close-modal-btn');
         let currentOpenRecipe = null;
+        let currentCombinedSteps = []; // NEU: Für Guided Cooking
         let basePortions = 4;
         let currentPortions = 4;
 
@@ -1012,24 +1026,45 @@ v4.4 - [AKTUELL] Das ultimative Druck-Update (Mac/iPad):
             const ingList = document.getElementById('modal-ingredients');
             ingList.innerHTML = '';
             if (!currentOpenRecipe) return;
-            currentOpenRecipe.displayIngredients.forEach(ing => {
-                const li = document.createElement('li');
-                li.className = "flex justify-between border-b border-ppeach/50 pb-1 last:border-0";
-                let finalAmountDisplay = '';
-                if (ing.amount && ing.amount.trim() !== '' && ing.amount !== '0') {
-                    let parsedAmount = parseFloat(ing.amount.replace(',', '.'));
-                    if (!isNaN(parsedAmount)) {
-                        let newAmount = (parsedAmount / basePortions) * currentPortions;
-                        newAmount = Math.round(newAmount * 100) / 100;
-                        finalAmountDisplay = newAmount.toString().replace('.', ',');
-                    } else finalAmountDisplay = ing.amount;
-                }
-                let displayParts = [];
-                if (finalAmountDisplay) displayParts.push(finalAmountDisplay);
-                if (ing.unit) displayParts.push(ing.unit);
-                li.innerHTML = `<span class="font-medium text-gray-800 min-w-0 pr-4">${ing.name}</span><span class="text-gray-500 text-right shrink-0 whitespace-nowrap">${displayParts.join(' ')}</span>`;
-                ingList.appendChild(li);
-            });
+
+            // Hilfsfunktion zum Rendern einer Zutatenliste inkl. Umrechnung
+            const renderIngs = (ings) => {
+                ings.forEach(ing => {
+                    const li = document.createElement('li');
+                    li.className = "flex justify-between border-b border-ppeach/50 pb-1 last:border-0";
+                    let finalAmountDisplay = '';
+                    if (ing.amount && ing.amount.trim() !== '' && ing.amount !== '0') {
+                        let parsedAmount = parseFloat(ing.amount.replace(',', '.'));
+                        if (!isNaN(parsedAmount)) {
+                            let newAmount = (parsedAmount / basePortions) * currentPortions;
+                            newAmount = Math.round(newAmount * 100) / 100;
+                            finalAmountDisplay = newAmount.toString().replace('.', ',');
+                        } else finalAmountDisplay = ing.amount;
+                    }
+                    let displayParts = [];
+                    if (finalAmountDisplay) displayParts.push(finalAmountDisplay);
+                    if (ing.unit) displayParts.push(ing.unit);
+                    li.innerHTML = `<span class="font-medium text-gray-800 min-w-0 pr-4">${ing.name}</span><span class="text-gray-500 text-right shrink-0 whitespace-nowrap">${displayParts.join(' ')}</span>`;
+                    ingList.appendChild(li);
+                });
+            };
+
+            // 1. Hauptrezept Zutaten
+            renderIngs(currentOpenRecipe.displayIngredients);
+
+            // 2. Grundrezept 1 Zutaten
+            const base1 = currentOpenRecipe.baseRecipe1 ? recipes.find(r => r.title.toLowerCase() === currentOpenRecipe.baseRecipe1.toLowerCase()) : null;
+            if (base1) {
+                ingList.insertAdjacentHTML('beforeend', `<li class="mt-4 mb-1 border-none"><span class="font-bold text-pgreen-dark uppercase text-xs tracking-wider bg-pgreen-light px-2 py-1 rounded">+ Für die ${base1.title}</span></li>`);
+                renderIngs(base1.displayIngredients);
+            }
+
+            // 3. Grundrezept 2 Zutaten
+            const base2 = currentOpenRecipe.baseRecipe2 ? recipes.find(r => r.title.toLowerCase() === currentOpenRecipe.baseRecipe2.toLowerCase()) : null;
+            if (base2) {
+                ingList.insertAdjacentHTML('beforeend', `<li class="mt-4 mb-1 border-none"><span class="font-bold text-pgreen-dark uppercase text-xs tracking-wider bg-pgreen-light px-2 py-1 rounded">+ Für die ${base2.title}</span></li>`);
+                renderIngs(base2.displayIngredients);
+            }
         }
 
         function openRecipeModal(recipe) {
@@ -1067,8 +1102,12 @@ v4.4 - [AKTUELL] Das ultimative Druck-Update (Mac/iPad):
 
             renderModalIngredients();
 
+            // SCHRITTE & GRUNDREZEPTE RENDERN
             const stepList = document.getElementById('modal-steps');
             stepList.innerHTML = '';
+            currentCombinedSteps = []; // Reset für Vollbild Modus
+
+            // Hauptrezept Schritte
             if (recipe.steps.length > 0) {
                 recipe.steps.forEach((step, index) => {
                     const li = document.createElement('li');
@@ -1076,8 +1115,48 @@ v4.4 - [AKTUELL] Das ultimative Druck-Update (Mac/iPad):
                     li.innerHTML = `<span class="flex-shrink-0 w-8 h-8 rounded-full bg-pgreen text-pgreen-dark font-bold flex items-center justify-center text-sm shrink-0">${index + 1}</span>
                                     <p class="pt-1 leading-relaxed min-w-0">${formatTimeInText(step)}</p>`;
                     stepList.appendChild(li);
+                    currentCombinedSteps.push(step); // Für Guided Cooking speichern
                 });
             } else stepList.innerHTML = '<p class="text-gray-500 italic">Keine Anleitung hinterlegt.</p>';
+
+            // Grundrezepte Akkordeons hinzufügen
+            const base1 = recipe.baseRecipe1 ? recipes.find(r => r.title.toLowerCase() === recipe.baseRecipe1.toLowerCase()) : null;
+            const base2 = recipe.baseRecipe2 ? recipes.find(r => r.title.toLowerCase() === recipe.baseRecipe2.toLowerCase()) : null;
+
+            if (base1 || base2) {
+                const multi = (base1 && base2);
+                stepList.insertAdjacentHTML('beforeend', `<h4 class="font-bold text-gray-800 mt-8 mb-3 text-sm uppercase tracking-wider">Für dieses Rezept brauchst du folgende${multi ? '' : 's'} Grundrezept${multi ? 'e' : ''}:</h4>`);
+                
+                const renderAccordion = (baseRecipe) => {
+                    const accId = 'acc-' + Math.random().toString(36).substr(2, 9);
+                    let stepsHtml = '';
+                    
+                    baseRecipe.steps.forEach((step, index) => {
+                        stepsHtml += `<li class="flex gap-4 mt-3">
+                            <span class="flex-shrink-0 w-7 h-7 rounded-full bg-ppeach text-ppeach-dark font-bold flex items-center justify-center text-xs shrink-0">${index + 1}</span>
+                            <p class="pt-1 text-sm leading-relaxed min-w-0">${formatTimeInText(step)}</p>
+                        </li>`;
+                        // Für den Vollbild-Modus abspeichern (mit Titel-Prefix)
+                        currentCombinedSteps.push(`<strong class="text-ppeach-dark block mb-1">[${baseRecipe.title}]</strong>${step}`);
+                    });
+
+                    const html = `
+                        <div class="mt-3 border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                            <button class="w-full bg-gray-50 px-4 py-3 flex justify-between items-center font-bold text-gray-700 hover:bg-gray-100 transition focus:outline-none" onclick="document.getElementById('${accId}').classList.toggle('hidden'); this.querySelector('.acc-icon').classList.toggle('rotate-180')">
+                                <span class="flex items-center gap-2"><i data-lucide="layers" class="w-4 h-4 text-gray-400"></i> ${baseRecipe.title}</span>
+                                <i data-lucide="chevron-down" class="acc-icon w-5 h-5 text-gray-400 transition-transform duration-300"></i>
+                            </button>
+                            <ol id="${accId}" class="hidden px-4 pb-4 bg-white">
+                                ${stepsHtml}
+                            </ol>
+                        </div>
+                    `;
+                    stepList.insertAdjacentHTML('beforeend', html);
+                };
+
+                if (base1) renderAccordion(base1);
+                if (base2) renderAccordion(base2);
+            }
 
             const tippContainer = document.getElementById('modal-tipp-container');
             if (recipe.tipp) { document.getElementById('modal-tipp-text').innerHTML = formatTimeInText(recipe.tipp); tippContainer.classList.remove('hidden'); } 
@@ -1094,13 +1173,13 @@ v4.4 - [AKTUELL] Das ultimative Druck-Update (Mac/iPad):
 
 
         // ---------------------------------------------------------
-        // GUIDED COOKING MODAL
+        // GUIDED COOKING MODAL (VOLLBILD MIT GRUNDREZEPTEN)
         // ---------------------------------------------------------
         const guidedModal = document.getElementById('guided-modal');
         let guidedStepIdx = 0;
 
         document.getElementById('start-guided-btn').addEventListener('click', () => {
-            if (!currentOpenRecipe || currentOpenRecipe.steps.length === 0) {
+            if (!currentOpenRecipe || currentCombinedSteps.length === 0) {
                 alert("Keine Anleitungsschritte für dieses Rezept hinterlegt."); return;
             }
             guidedStepIdx = 0;
@@ -1129,7 +1208,7 @@ v4.4 - [AKTUELL] Das ultimative Druck-Update (Mac/iPad):
         });
 
         document.getElementById('guided-next-btn').addEventListener('click', () => {
-            if (guidedStepIdx < currentOpenRecipe.steps.length - 1) { guidedStepIdx++; updateGuidedView(); }
+            if (guidedStepIdx < currentCombinedSteps.length - 1) { guidedStepIdx++; updateGuidedView(); }
             else {
                 guidedModal.classList.add('hidden');
                 guidedModal.classList.remove('flex');
@@ -1137,12 +1216,12 @@ v4.4 - [AKTUELL] Das ultimative Druck-Update (Mac/iPad):
         });
 
         function updateGuidedView() {
-            const total = currentOpenRecipe.steps.length;
+            const total = currentCombinedSteps.length;
             
             const textEl = document.getElementById('guided-step-text');
             textEl.classList.remove('fade-in');
             void textEl.offsetWidth; 
-            textEl.innerHTML = formatTimeInText(currentOpenRecipe.steps[guidedStepIdx]);
+            textEl.innerHTML = formatTimeInText(currentCombinedSteps[guidedStepIdx]);
             textEl.classList.add('fade-in');
 
             document.getElementById('guided-step-number').textContent = `${guidedStepIdx + 1} / ${total}`;
@@ -1166,14 +1245,13 @@ v4.4 - [AKTUELL] Das ultimative Druck-Update (Mac/iPad):
         }
 
         // ---------------------------------------------------------
-        // DRUCK-FUNKTION (PWA REINES CSS)
+        // DRUCK-FUNKTION (PWA REINES CSS MIT GRUNDREZEPTEN)
         // ---------------------------------------------------------
         document.getElementById('print-modal-btn').addEventListener('click', printRecipe);
 
         function printRecipe() {
             if (!currentOpenRecipe) return;
 
-            // Alten Container entfernen falls vorhanden
             const oldContainer = document.getElementById('print-container');
             if(oldContainer) oldContainer.remove();
 
@@ -1183,25 +1261,60 @@ v4.4 - [AKTUELL] Das ultimative Druck-Update (Mac/iPad):
                 imageHTML = `<img src="${finalPrintImageUrl}" alt="Rezeptbild" class="recipe-print-img" onerror="this.style.display='none'">`;
             }
 
+            // 1. ZUTATEN DRUCKEN
             let ingredientsHTML = '';
-            currentOpenRecipe.displayIngredients.forEach(ing => {
-                let finalAmountDisplay = '';
-                if (ing.amount && ing.amount.trim() !== '' && ing.amount !== '0') {
-                    let parsedAmount = parseFloat(ing.amount.replace(',', '.'));
-                    if (!isNaN(parsedAmount)) {
-                        let newAmount = (parsedAmount / basePortions) * currentPortions;
-                        newAmount = Math.round(newAmount * 100) / 100;
-                        finalAmountDisplay = newAmount.toString().replace('.', ',');
-                    } else finalAmountDisplay = ing.amount;
-                }
-                let displayParts = [];
-                if (finalAmountDisplay) displayParts.push(finalAmountDisplay);
-                if (ing.unit) displayParts.push(ing.unit);
-                ingredientsHTML += `<li><span class="ing-amount">${displayParts.join(' ')}</span> <span class="ing-name">${ing.name}</span></li>`;
-            });
+            const renderPrintIngs = (ings) => {
+                ings.forEach(ing => {
+                    let finalAmountDisplay = '';
+                    if (ing.amount && ing.amount.trim() !== '' && ing.amount !== '0') {
+                        let parsedAmount = parseFloat(ing.amount.replace(',', '.'));
+                        if (!isNaN(parsedAmount)) {
+                            let newAmount = (parsedAmount / basePortions) * currentPortions;
+                            newAmount = Math.round(newAmount * 100) / 100;
+                            finalAmountDisplay = newAmount.toString().replace('.', ',');
+                        } else finalAmountDisplay = ing.amount;
+                    }
+                    let displayParts = [];
+                    if (finalAmountDisplay) displayParts.push(finalAmountDisplay);
+                    if (ing.unit) displayParts.push(ing.unit);
+                    ingredientsHTML += `<li><span class="ing-amount">${displayParts.join(' ')}</span> <span class="ing-name">${ing.name}</span></li>`;
+                });
+            };
 
-            let stepsHTML = '';
+            renderPrintIngs(currentOpenRecipe.displayIngredients);
+
+            const base1 = currentOpenRecipe.baseRecipe1 ? recipes.find(r => r.title.toLowerCase() === currentOpenRecipe.baseRecipe1.toLowerCase()) : null;
+            if (base1) {
+                ingredientsHTML += `<li style="margin-top: 15px; border-bottom: none;"><strong style="color: #2b7a5c; font-size: 11pt;">+ Für die ${base1.title}</strong></li>`;
+                renderPrintIngs(base1.displayIngredients);
+            }
+
+            const base2 = currentOpenRecipe.baseRecipe2 ? recipes.find(r => r.title.toLowerCase() === currentOpenRecipe.baseRecipe2.toLowerCase()) : null;
+            if (base2) {
+                ingredientsHTML += `<li style="margin-top: 15px; border-bottom: none;"><strong style="color: #2b7a5c; font-size: 11pt;">+ Für die ${base2.title}</strong></li>`;
+                renderPrintIngs(base2.displayIngredients);
+            }
+
+            // 2. SCHRITTE DRUCKEN (komplett aufgeklappt)
+            let stepsHTML = `<ol class="steps">`;
             currentOpenRecipe.steps.forEach(step => stepsHTML += `<li>${formatTimeInText(step)}</li>`);
+            stepsHTML += `</ol>`;
+
+            if (base1 || base2) {
+                const multi = (base1 && base2);
+                stepsHTML += `<h3 style="margin-top: 20px; font-size: 12pt; color: #1f2937;">Für dieses Rezept brauchst du folgende${multi ? '' : 's'} Grundrezept${multi ? 'e' : ''}:</h3>`;
+                
+                if (base1) {
+                    stepsHTML += `<h4 style="margin-top: 10px; font-size: 11pt; color: #064e3b;">${base1.title}</h4><ol class="steps">`;
+                    base1.steps.forEach(step => stepsHTML += `<li>${formatTimeInText(step)}</li>`);
+                    stepsHTML += `</ol>`;
+                }
+                if (base2) {
+                    stepsHTML += `<h4 style="margin-top: 10px; font-size: 11pt; color: #064e3b;">${base2.title}</h4><ol class="steps">`;
+                    base2.steps.forEach(step => stepsHTML += `<li>${formatTimeInText(step)}</li>`);
+                    stepsHTML += `</ol>`;
+                }
+            }
 
             let tippHTML = '';
             if (currentOpenRecipe.tipp && currentOpenRecipe.tipp.trim() !== '') {
@@ -1220,7 +1333,7 @@ v4.4 - [AKTUELL] Das ultimative Druck-Update (Mac/iPad):
                 <div class="meta">${metaTags.join(' &nbsp;|&nbsp; ')}</div>
                 <div class="content-grid">
                     <div class="ingredients-col">${imageHTML}<h2>Zutaten</h2><div class="portions">Für ${currentPortions} Personen</div><ul class="ingredients">${ingredientsHTML}</ul></div>
-                    <div class="steps-col"><h2>Zubereitung</h2><ol class="steps">${stepsHTML}</ol>${tippHTML}</div>
+                    <div class="steps-col"><h2>Zubereitung</h2>${stepsHTML}${tippHTML}</div>
                 </div>
             `;
 
@@ -1229,10 +1342,8 @@ v4.4 - [AKTUELL] Das ultimative Druck-Update (Mac/iPad):
             printArea.innerHTML = htmlContent;
             document.body.appendChild(printArea);
 
-            // Timeout hilft Safari (iPad/Mac) die Bilder zu laden bevor der Druck-Dialog feuert
             setTimeout(() => {
                 window.print();
-                // Nach dem Druckvorgang den Container wieder löschen
                 setTimeout(() => {
                     const cleanup = document.getElementById('print-container');
                     if(cleanup) cleanup.remove();
