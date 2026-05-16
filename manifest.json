@@ -1,22 +1,41 @@
 {
   "name": "Schulküchen-Rezeptfinder",
   "short_name": "Rezepte",
+  "id": "./",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#fff0e5",
   "theme_color": "#a8e6cf",
+  "lang": "de",
+  "dir": "ltr",
+  "description": "Rezeptfinder für die Schulküche – findet passende Rezepte zu vorhandenen Zutaten, skaliert Portionen und funktioniert offline.",
+  "categories": ["food", "education", "utilities"],
   "icons": [
     {
       "src": "icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

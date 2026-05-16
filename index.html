@@ -5,29 +5,104 @@
 VERSIONSVERLAUF (Version History)
 ======================================================================
 v1.0 bis v4.4 - PWA, PWA-Fixes für Apple/Windows, Print-CSS, Offline-Safe
-v4.5 - [AKTUELL] Das große Grundrezept-Update:
+v4.5 - Das große Grundrezept-Update:
        - Feste Kategorien-Reihenfolge integriert.
        - CSV-Parser liest Grundrezept_01 und Grundrezept_02 aus.
-       - Zutaten von Grundrezepten werden im Pop-Up automatisch ergänzt
-         (inklusive synchroner Portionen-Skalierung).
-       - Zubereitungsschritte von Grundrezepten werden als aufklappbare
-         Akkordeons unter dem Hauptrezept angezeigt.
-       - Im Vollbild-Modus (Guided Cooking) werden die Schritte beider 
-         Rezepte nahtlos zum Durchwischen hintereinander gehängt.
-       - Beim Drucken klappen die Grundrezepte automatisch vollständig auf.
+       - Zutaten/Schritte der Grundrezepte werden integriert
+         (Portionen-Skalierung, Akkordeons, Vollbild-Modus, Druck).
+v4.7 - [AKTUELL] Stabilitäts- und Modernisierungs-Update:
+       - Sofort-Anzeige aus dem Cache (kein Ladefenster mehr).
+       - Inline-Fallback-CSS als Sicherheitsnetz, falls die Tailwind-CDN hängt
+         (behebt das "kaputte Design" in Edge/Chrome).
+       - Service Worker liefert nie mehr `undefined` zurück.
+       - PWA-Manifest mit id/scope/maskable-Icons modernisiert.
+       - Preconnect zu Google Docs für schnelleren ersten Start.
+       - Inhalts-Bereich liefert frische Rezepte nach dem ersten Render
+         lautlos im Hintergrund nach (stale-while-revalidate).
+       - ESC schließt offene Modale.
 ======================================================================
 -->
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rezepte finden</title>
-    
-    <!-- PWA Manifest & Theme Color -->
+    <meta name="color-scheme" content="light">
+    <meta name="description" content="Rezeptfinder für die Schulküche – findet passende Rezepte zu vorhandenen Zutaten, skaliert Portionen und funktioniert offline.">
+    <title>Schulküchen-Rezeptfinder</title>
+
+    <!-- PWA Manifest, Theme Color & iOS-Icon -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#a8e6cf">
-    
-    <!-- Tailwind CSS (Genaue Version für besseren Cache) -->
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+
+    <!-- Preconnect/DNS-Prefetch beschleunigen den ersten Verbindungsaufbau -->
+    <link rel="preconnect" href="https://docs.google.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+    <link rel="preconnect" href="https://unpkg.com" crossorigin>
+    <link rel="dns-prefetch" href="https://lh3.googleusercontent.com">
+
+    <!-- =======================================================
+         SICHERHEITSNETZ-CSS (greift, falls Tailwind-CDN ausfällt)
+         Mit :where() bleibt die Spezifität auf 0 – Tailwind
+         überschreibt es immer, sobald es geladen ist.
+         ======================================================= -->
+    <style>
+        :where(html) { background: #fff0e5; }
+        :where(body) {
+            margin: 0; padding: 0;
+            min-height: 100vh;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+            color: #1f2937;
+            background: #fff0e5;
+        }
+        .hidden { display: none !important; }
+        :where(header) {
+            background: #a8e6cf;
+            color: #2b7a5c;
+            padding: 1.5rem 1rem 2rem;
+        }
+        :where(main) {
+            max-width: 64rem;
+            margin: 0 auto;
+            padding: 0 1rem 3rem;
+            width: 100%;
+        }
+        :where(footer) {
+            background: white;
+            padding: 2.5rem 1rem;
+            border-top: 1px solid #e5e7eb;
+        }
+        :where(section) {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,.08);
+        }
+        :where(input, button, select, textarea) {
+            font-family: inherit;
+            font-size: 1rem;
+        }
+        :where(button) { cursor: pointer; }
+        :where(img) { max-width: 100%; height: auto; }
+        :where(h1) { font-size: 1.75rem; margin: 0 0 0.5rem; }
+        :where(h2) { font-size: 1.25rem; margin: 0 0 0.5rem; }
+        :where(h3) { font-size: 1.125rem; margin: 0 0 0.5rem; }
+        /* Modal-Overlays MÜSSEN fixed positioniert sein, sonst sprengen sie das Layout */
+        :where(#recipe-modal, #legal-modal, #offline-modal):not(.hidden) {
+            position: fixed; inset: 0; z-index: 50;
+            background: rgba(17, 24, 39, 0.6);
+            padding: 1rem;
+            display: flex; align-items: center; justify-content: center;
+        }
+        :where(#guided-modal):not(.hidden) {
+            position: fixed; inset: 0; z-index: 60;
+            background: white;
+            display: flex; flex-direction: column;
+        }
+    </style>
+
+    <!-- Tailwind CSS (Play-CDN, JIT) -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Custom Pastell Farbpalette konfigurieren -->
@@ -155,18 +230,13 @@ v4.5 - [AKTUELL] Das große Grundrezept-Update:
         Offline-Modus (Gespeicherter Stand)
     </div>
 
-    <!-- LADE BEREICH -->
-    <div id="loading-screen" class="min-h-screen flex flex-col items-center justify-center p-4 fade-in w-full">
-        <div class="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full text-center border border-pgreen">
-            <i data-lucide="loader-2" id="loading-spinner" class="w-12 h-12 text-pgreen-dark animate-spin mx-auto mb-4 shrink-0"></i>
-            <h1 class="text-2xl font-bold mb-2 text-gray-800">Lade Rezepte...</h1>
-            <p class="text-gray-600">Die Schulküchen-Datenbank wird gestartet.</p>
-            <p id="loading-error" class="text-red-500 mt-4 hidden text-sm font-medium" aria-live="assertive">Fehler: Die Datei konnte nicht geladen werden.</p>
-        </div>
+    <!-- STATUS-BANNER (nur sichtbar bei echten Fehlern, z.B. Erstaufruf ohne Netz) -->
+    <div id="status-banner" class="hidden bg-red-50 border-b border-red-200 text-red-700 px-4 py-3 text-center text-sm font-medium w-full" role="alert" aria-live="assertive">
+        <span id="status-banner-text"></span>
     </div>
 
     <!-- HAUPT-APP BEREICH -->
-    <div id="main-app" class="hidden flex-1 flex flex-col w-full">
+    <div id="main-app" class="flex-1 flex flex-col w-full">
         
         <header class="bg-pgreen text-pgreen-dark pt-6 pb-8 shadow-md rounded-b-3xl mb-6 relative shrink-0 w-full">
             <div class="max-w-6xl mx-auto px-4 w-full">
@@ -190,7 +260,7 @@ v4.5 - [AKTUELL] Das große Grundrezept-Update:
                         <i data-lucide="search" class="w-6 h-6 ml-2 text-current opacity-70 shrink-0"></i>
                         <input type="text" id="recipe-search-input" autocomplete="off" aria-label="Direkt nach einem Rezept suchen"
                             class="w-full bg-transparent border-none focus:ring-0 outline-none placeholder-pgreen-dark/60 focus-within:placeholder-gray-500 py-2 text-lg font-medium min-w-0"
-                            placeholder="Direkt nach Rezept suchen (z.B. Pfannkuchen)...">
+                            placeholder="Lade Rezepte…">
                     </div>
                     <ul id="recipe-autocomplete-list" class="absolute z-20 w-full bg-white border border-gray-200 rounded-xl mt-2 shadow-2xl max-h-60 overflow-y-auto hidden no-scrollbar text-gray-800">
                     </ul>
@@ -216,7 +286,7 @@ v4.5 - [AKTUELL] Das große Grundrezept-Update:
                     <div class="relative flex-1 min-w-0 w-full">
                         <input type="text" id="ingredient-input" autocomplete="off" aria-label="Zutat eingeben"
                             class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-pgreen-dark focus:ring-0 outline-none transition text-lg min-w-0"
-                            placeholder="Zutat eintippen (Öl, Salz, Wasser ignorieren)...">
+                            placeholder="Lade Rezepte…">
                         
                         <ul id="ingredient-autocomplete-list" class="absolute z-20 w-full bg-white border border-gray-200 rounded-xl mt-1 shadow-xl max-h-48 overflow-y-auto hidden no-scrollbar">
                         </ul>
@@ -556,74 +626,112 @@ v4.5 - [AKTUELL] Das große Grundrezept-Update:
         const CACHE_KEY = 'schulkueche_rezepte_v1';
         const baseIngredientsNames = ['öl', 'salz', 'pfeffer', 'wasser', 'oel', 'salz & pfeffer', 'meersalz', 'olivenöl', 'sonnenblumenöl', 'rapsöl'];
 
+        // ---------------------------------------------------------
+        // LADE-STRATEGIE: Cache-First (instant render) + Hintergrund-Refresh
+        // (stale-while-revalidate). Kein Lade-Vollbild mehr.
+        // ---------------------------------------------------------
         document.addEventListener('DOMContentLoaded', () => {
-            if (!navigator.onLine) {
-                console.log("Gerät ist offline. Lade Daten direkt aus dem Cache...");
-                loadFromCache();
-            } else {
-                fetchDataFromNetwork();
+            const hasCache = tryLoadFromCache();
+
+            if (navigator.onLine) {
+                // Frische Daten holen — entweder im Hintergrund (Cache da) oder als Erstlast
+                fetchDataFromNetwork(hasCache);
+            } else if (!hasCache) {
+                // Offline UND noch nie geladen → echter Fehler
+                showStatusBanner("Keine Internetverbindung und keine gespeicherten Rezepte. Bitte einmal mit WLAN starten.");
+                resetSearchPlaceholders("Offline — keine Daten verfügbar");
             }
+            // Wenn Cache da ist und offline: badge zeigt sich automatisch via updateOnlineStatus()
         });
 
-        function fetchDataFromNetwork() {
-            const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS47FKbfUVbg0YLTW2FZFIsHhCyKG6jOK4Ve1vz8yo3dglBLC_xWWzTz9eQCKQ2Mm1ePqnV0VPkSTXf/pub?output=csv&_t=' + new Date().getTime();
-            
+        function tryLoadFromCache() {
+            let cachedCsv = null;
+            try { cachedCsv = localStorage.getItem(CACHE_KEY); } catch (e) {}
+            if (!cachedCsv) return false;
+            try {
+                processCSV(cachedCsv);
+                onDataReady();
+                return true;
+            } catch (e) {
+                console.warn("Cache konnte nicht gelesen werden", e);
+                return false;
+            }
+        }
+
+        function fetchDataFromNetwork(silentRefresh) {
+            const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS47FKbfUVbg0YLTW2FZFIsHhCyKG6jOK4Ve1vz8yo3dglBLC_xWWzTz9eQCKQ2Mm1ePqnV0VPkSTXf/pub?output=csv&_t=' + Date.now();
+
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000); 
-            
-            fetch(csvUrl, { signal: controller.signal })
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+            fetch(csvUrl, { signal: controller.signal, cache: 'no-store' })
                 .then(response => {
-                    clearTimeout(timeoutId); 
-                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    clearTimeout(timeoutId);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     return response.text();
                 })
                 .then(csvText => {
+                    try { localStorage.setItem(CACHE_KEY, csvText); } catch (e) { console.warn("Offline-Speichern blockiert."); }
                     try {
-                        try { localStorage.setItem(CACHE_KEY, csvText); } catch (e) { console.warn("Offline-Speichern blockiert."); }
                         processCSV(csvText);
-                        initAppSuccess();
-                    } catch (err) { showError("Datenstruktur konnte nicht verarbeitet werden."); }
+                        if (silentRefresh) {
+                            // Wir hatten schon Daten — nur dezent das nachziehen,
+                            // was der Nutzer evtl. gerade sieht.
+                            renderCategories();
+                            if (selectedIngredients.length > 0 || currentCategoryFilter) {
+                                calculateMatches();
+                            }
+                        } else {
+                            onDataReady();
+                        }
+                        hideStatusBanner();
+                    } catch (err) {
+                        if (!silentRefresh) showStatusBanner("Datenstruktur konnte nicht verarbeitet werden.");
+                    }
                 })
                 .catch(error => {
-                    clearTimeout(timeoutId); 
-                    console.warn("Netzwerkfehler oder Timeout beim Laden. Versuche Offline-Daten zu laden...", error);
-                    loadFromCache(true);
+                    clearTimeout(timeoutId);
+                    if (!silentRefresh) {
+                        console.warn("Netzwerkfehler beim Erstladen.", error);
+                        showStatusBanner("Rezepte konnten nicht geladen werden. Bitte Internetverbindung prüfen.");
+                        resetSearchPlaceholders("Keine Verbindung");
+                    } else {
+                        // Stiller Refresh fehlgeschlagen — Nutzer hat aber gecachte Daten. Kein UI-Lärm.
+                        console.info("Hintergrund-Refresh fehlgeschlagen, Cache-Daten bleiben aktiv.");
+                    }
                 });
         }
 
-        function loadFromCache() {
-            let cachedCsv = null;
-            try { cachedCsv = localStorage.getItem(CACHE_KEY); } catch (e) {}
-            
-            if (cachedCsv) {
-                try {
-                    processCSV(cachedCsv);
-                    initAppSuccess();
-                    document.getElementById('offline-badge').classList.remove('hidden');
-                } catch(e) { 
-                    showError("Fehler beim Lesen der gespeicherten Offline-Daten."); 
-                }
-            } else {
-                showError("Du hast aktuell keine Internetverbindung und die Rezepte wurden noch nie auf diesem Gerät geladen. Bitte verbinde dich kurz mit dem WLAN.");
-            }
-        }
-
-        function initAppSuccess() {
-            document.getElementById('loading-screen').classList.add('hidden');
-            document.getElementById('main-app').classList.remove('hidden');
-            document.getElementById('recipe-search-input').focus();
+        function onDataReady() {
+            resetSearchPlaceholders();
             renderCategories();
+            // Nur auf Desktop autofokussieren — auf Mobil nervt das Tastatur-Popup
+            if (window.matchMedia('(min-width: 768px)').matches) {
+                document.getElementById('recipe-search-input').focus({ preventScroll: true });
+            }
         }
 
-        function showError(msg) {
-            const titleEl = document.querySelector('#loading-screen h1');
-            if (titleEl) {
-                titleEl.textContent = "Verbindung fehlgeschlagen";
-                titleEl.classList.replace('text-gray-800', 'text-red-600');
+        function resetSearchPlaceholders(loadingMsg) {
+            const recipeInput = document.getElementById('recipe-search-input');
+            const ingredientInput = document.getElementById('ingredient-input');
+            if (loadingMsg) {
+                recipeInput.placeholder = loadingMsg;
+                ingredientInput.placeholder = loadingMsg;
+            } else {
+                recipeInput.placeholder = "Direkt nach Rezept suchen (z.B. Pfannkuchen)...";
+                ingredientInput.placeholder = "Zutat eintippen (Öl, Salz, Wasser ignorieren)...";
             }
-            document.getElementById('loading-error').textContent = msg;
-            document.getElementById('loading-error').classList.remove('hidden');
-            document.getElementById('loading-spinner').classList.add('hidden');
+        }
+
+        function showStatusBanner(msg) {
+            const banner = document.getElementById('status-banner');
+            const text = document.getElementById('status-banner-text');
+            text.textContent = msg;
+            banner.classList.remove('hidden');
+        }
+
+        function hideStatusBanner() {
+            document.getElementById('status-banner').classList.add('hidden');
         }
 
         function parseCSVFull(text) {
@@ -1389,11 +1497,41 @@ v4.5 - [AKTUELL] Das große Grundrezept-Update:
         document.getElementById('close-offline-btn').addEventListener('click', () => { offlineModal.classList.add('hidden'); document.body.style.overflow = ''; });
         offlineModal.addEventListener('click', (e) => { if (e.target === offlineModal) { offlineModal.classList.add('hidden'); document.body.style.overflow = ''; }});
 
+        // ---------------------------------------------------------
+        // GLOBALE TASTATUR-SHORTCUTS
+        // ESC schließt jedes offene Modal (UX-Standard)
+        // ---------------------------------------------------------
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+            const guided = document.getElementById('guided-modal');
+            if (!guided.classList.contains('hidden')) {
+                guided.classList.add('hidden');
+                guided.classList.remove('flex');
+                return;
+            }
+            if (!document.getElementById('recipe-modal').classList.contains('hidden')) {
+                closeModal();
+                return;
+            }
+            if (!document.getElementById('legal-modal').classList.contains('hidden')) {
+                document.getElementById('legal-modal').classList.add('hidden');
+                document.body.style.overflow = '';
+                return;
+            }
+            if (!document.getElementById('offline-modal').classList.contains('hidden')) {
+                document.getElementById('offline-modal').classList.add('hidden');
+                document.body.style.overflow = '';
+            }
+        });
+
+        // ---------------------------------------------------------
+        // SERVICE WORKER REGISTRIERUNG
+        // ---------------------------------------------------------
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => { 
+            window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js').then(reg => {
-                    reg.update(); 
-                }).catch(() => {}); 
+                    reg.update();
+                }).catch(() => {});
             });
         }
     </script>
